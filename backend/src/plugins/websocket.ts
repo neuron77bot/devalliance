@@ -8,6 +8,7 @@ import { metricsService } from '../services/MetricsService';
 declare module 'fastify' {
   interface FastifyInstance {
     websocketClients: Set<WebSocket>;
+    websocketBroadcast: { clients: Set<WebSocket> };
   }
 }
 
@@ -17,6 +18,9 @@ async function websocketPlugin(fastify: FastifyInstance) {
   // Set para mantener track de conexiones activas
   const clients = new Set<WebSocket>();
   fastify.decorate('websocketClients', clients);
+  
+  // Decorar también como websocketBroadcast para compatibilidad con routes
+  fastify.decorate('websocketBroadcast', { clients });
   
   // WebSocket endpoint para real-time updates
   fastify.get('/ws', { websocket: true }, (socket) => {

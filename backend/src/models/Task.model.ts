@@ -1,14 +1,26 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export type TaskStatus = 'pending' | 'assigned' | 'in_progress' | 'paused' | 'completed' | 'failed' | 'cancelled';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
 export interface ITask extends Document {
   title: string;
   description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
   assignedTo?: string; // agentId
-  status: 'pending' | 'in-progress' | 'completed' | 'failed';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  result?: any;
-  error?: string;
+  createdBy?: string;
   createdAt: Date;
+  startedAt?: Date;
+  completedAt?: Date;
+  estimatedDuration?: number; // minutes
+  actualDuration?: number; // minutes
+  tags: string[];
+  dependencies: string[]; // task IDs
+  metadata: {
+    notes?: string;
+    attachments?: string[];
+  };
   updatedAt: Date;
 }
 
@@ -16,19 +28,28 @@ const TaskSchema = new Schema<ITask>(
   {
     title: { type: String, required: true },
     description: { type: String, required: true },
-    assignedTo: { type: String, ref: 'Agent' },
     status: {
       type: String,
-      enum: ['pending', 'in-progress', 'completed', 'failed'],
+      enum: ['pending', 'assigned', 'in_progress', 'paused', 'completed', 'failed', 'cancelled'],
       default: 'pending'
     },
     priority: {
       type: String,
-      enum: ['low', 'medium', 'high', 'critical'],
+      enum: ['low', 'medium', 'high', 'urgent'],
       default: 'medium'
     },
-    result: { type: Schema.Types.Mixed },
-    error: { type: String }
+    assignedTo: { type: String, ref: 'Agent' },
+    createdBy: { type: String },
+    startedAt: { type: Date },
+    completedAt: { type: Date },
+    estimatedDuration: { type: Number },
+    actualDuration: { type: Number },
+    tags: [{ type: String }],
+    dependencies: [{ type: String }],
+    metadata: {
+      notes: { type: String },
+      attachments: [{ type: String }]
+    }
   },
   {
     timestamps: true,
@@ -36,7 +57,10 @@ const TaskSchema = new Schema<ITask>(
   }
 );
 
-TaskSchema.index({ status: 1, priority: -1 });
-TaskSchema.index({ assignedTo: 1 });
+// Indexes for performance
+TaskSchema.index({ status: 1, priority: -1, createdAt: -1 });
+TaskSchema.index({ assignedTo: 1, status: 1 });
+TaskSchema.index({ priority: -1 });
+TaskSchema.index({ createdAt: -1 });
 
 export const TaskModel = mongoose.model<ITask>('Task', TaskSchema);
