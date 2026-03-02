@@ -1,0 +1,42 @@
+{
+  "name": "devalliance-mission-control-backend",
+  "version": "2.0.0",
+  "description": "DevAlliance Mission Control Backend - Fastify + TypeScript",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "eslint src --ext .ts",
+    "test": "echo \"Tests pending\" && exit 0"
+  },
+  "keywords": [
+    "devalliance",
+    "mission-control",
+    "fastify",
+    "typescript"
+  ],
+  "author": "DevAlliance",
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/swagger": "^9.3.0",
+    "@fastify/swagger-ui": "^5.2.1",
+    "@fastify/websocket": "^11.0.1",
+    "@sinclair/typebox": "^0.34.9",
+    "fastify": "^5.2.0",
+    "fastify-plugin": "^5.0.1",
+    "mongoose": "^8.9.3",
+    "pino-pretty": "^13.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "@typescript-eslint/eslint-plugin": "^8.18.2",
+    "@typescript-eslint/parser": "^8.18.2",
+    "eslint": "^9.18.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
