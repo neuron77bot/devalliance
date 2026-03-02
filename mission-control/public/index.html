@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevAlliance Mission Control</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                <h1>DevAlliance Mission Control</h1>
+            </div>
+            <div class="status-badge" id="systemStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Loading...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="dashboard">
+            <h2>Active Agents</h2>
+            <div id="agentsGrid" class="agents-grid">
+                <!-- Agent cards will be inserted here -->
+            </div>
+        </section>
+
+        <section class="controls">
+            <h2>Quick Actions</h2>
+            <div class="actions-grid">
+                <button onclick="refreshStatus()" class="btn btn-primary">
+                    🔄 Refresh Status
+                </button>
+                <button onclick="testCommunication()" class="btn btn-secondary">
+                    🔗 Test Communication
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 DevAlliance. Powered by OpenClaw.</p>
+        </div>
+    </footer>
+
+    <!-- Agent Detail Modal -->
+    <div id="agentDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalAgentName">Agent Details</h2>
+                <button onclick="closeAgentDetail()" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modalAgentBody">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

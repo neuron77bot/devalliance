@@ -1,0 +1,27 @@
+services:
+  mission-control:
+    build: .
+    container_name: devalliance-mission-control
+    env_file:
+      - .env
+    ports:
+      - "3100:3100"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-3100}
+      - BASE_URL=${BASE_URL:-}
+      - BASE_PATH=${BASE_PATH:-}
+    networks:
+      - devalliance
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  devalliance:
+    name: devalliance
+    external: true
