@@ -39,7 +39,9 @@ export const AgentListResponseSchema = Type.Object({
     name: Type.String(),
     role: Type.String(),
     description: Type.String(),
-    capabilities: Type.Array(Type.String())
+    capabilities: Type.Array(Type.String()),
+    status: Type.Optional(Type.String()),
+    containerRunning: Type.Optional(Type.Boolean())
   }))
 });
 

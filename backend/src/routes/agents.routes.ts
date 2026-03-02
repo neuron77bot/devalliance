@@ -32,17 +32,11 @@ export default async function agentRoutes(fastify: FastifyInstance) {
     },
     async (_request, reply) => {
       try {
-        const agents = await agentService.getAllAgents();
+        const agents = await agentService.getAllAgentsWithStatus();
         
         return {
           ok: true,
-          agents: agents.map((a) => ({
-            id: a.id,
-            name: a.name,
-            role: a.role,
-            description: a.description,
-            capabilities: a.capabilities
-          }))
+          agents
         };
       } catch (error) {
         fastify.log.error(error);

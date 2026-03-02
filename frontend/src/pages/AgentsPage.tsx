@@ -40,16 +40,12 @@ export const AgentsPage = () => {
   return (
     <div>
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
+      <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-100 mb-2">Todos los Agentes</h1>
         <p className="text-gray-400">
           Explora y gestiona el equipo completo de agentes de desarrollo
         </p>
-      </motion.div>
+      </div>
 
       {/* Filters */}
       <div className="flex gap-3 mb-6">

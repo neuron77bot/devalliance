@@ -22,6 +22,47 @@ export class AgentService {
   }
 
   /**
+   * Get all agents with real-time Docker container status
+   */
+  async getAllAgentsWithStatus(): Promise<any[]> {
+    const agents = await this.getAllAgents();
+    
+    const agentsWithStatus = await Promise.all(
+      agents.map(async (agent) => {
+        const containerStatus = await this.dockerService.getContainerStatus(agent.id);
+        
+        console.log(`[DEBUG] Agent ${agent.id} - Container status:`, containerStatus);
+        
+        // Map container status to agent status
+        let status = 'offline';
+        if (containerStatus.running) {
+          status = 'healthy';
+        } else if (containerStatus.error) {
+          status = 'error';
+        }
+        
+        const result = {
+          id: agent.id,
+          name: agent.name,
+          role: agent.role,
+          description: agent.description,
+          capabilities: agent.capabilities,
+          status,
+          containerRunning: containerStatus.running
+        };
+        
+        console.log(`[DEBUG] Agent ${agent.id} - Result:`, result);
+        
+        return result;
+      })
+    );
+    
+    console.log(`[DEBUG] Final agents with status:`, agentsWithStatus);
+    
+    return agentsWithStatus;
+  }
+
+  /**
    * Get agent by ID
    */
   async getAgentById(id: string): Promise<any | null> {

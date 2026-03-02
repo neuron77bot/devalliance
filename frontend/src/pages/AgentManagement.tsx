@@ -8,7 +8,7 @@ import { DeleteConfirmModal } from '../components/AgentManagement/DeleteConfirmM
 import type { Agent } from '../types/api';
 
 export const AgentManagement: React.FC = () => {
-  const { agents, loading, error } = useAgents();
+  const { agents, loading, error, refetch } = useAgents();
   const {
     createAgent,
     updateAgent,
@@ -31,9 +31,9 @@ export const AgentManagement: React.FC = () => {
   };
 
   // Trigger refresh
-  const triggerRefresh = () => {
-    // Reload page to refresh agent list
-    window.location.reload();
+  const triggerRefresh = async () => {
+    // Refetch agents to update list
+    await refetch();
   };
 
   // Handle create agent
