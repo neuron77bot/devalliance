@@ -7,10 +7,10 @@ services:
       dockerfile: Dockerfile
     container_name: devalliance-backend
     ports:
-      - "3100:3100"
+      - "3101:3101"
     environment:
       - NODE_ENV=production
-      - PORT=3100
+      - PORT=3101
       - HOST=0.0.0.0
       - MONGODB_URI=mongodb://mongo:27017/devalliance
       - BASE_URL=
@@ -38,7 +38,8 @@ services:
 
 networks:
   devalliance-network:
-    driver: bridge
+    name: devalliance
+    external: true
 
 volumes:
   mongo-data:

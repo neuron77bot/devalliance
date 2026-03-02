@@ -7,7 +7,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/app">
       <div className="min-h-screen bg-navy-950 flex flex-col">
         <Header systemStatus="operational" />
         

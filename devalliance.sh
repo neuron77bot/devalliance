@@ -5,7 +5,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTANCES_DIR="$SCRIPT_DIR/openclaw-containers/instances"
-MC_DIR="$SCRIPT_DIR/mission-control"
+BACKEND_DIR="$SCRIPT_DIR/backend"
+FRONTEND_DIR="$SCRIPT_DIR/frontend"
 
 # Colors
 GREEN='\033[0;32m'
@@ -30,9 +31,11 @@ function status() {
     
     echo ""
     echo -e "${YELLOW}🌐 URLs:${NC}"
-    echo -e "  ${GREEN}•${NC} Mission Control: http://localhost:3100"
-    echo -e "  ${GREEN}•${NC} Arquitecto:      http://localhost:18790"
-    echo -e "  ${GREEN}•${NC} Developer:       http://localhost:18791"
+    echo -e "  ${GREEN}•${NC} Frontend:   https://devalliance.com.ar/app"
+    echo -e "  ${GREEN}•${NC} Backend:    https://devalliance.com.ar/app/api"
+    echo -e "  ${GREEN}•${NC} Docs:       https://devalliance.com.ar/app/docs"
+    echo -e "  ${GREEN}•${NC} Arquitecto: http://localhost:18790"
+    echo -e "  ${GREEN}•${NC} Developer:  http://localhost:18791"
 }
 
 function start() {
@@ -48,9 +51,9 @@ function start() {
     echo -e "${BLUE}Starting Developer...${NC}"
     cd "$INSTANCES_DIR/developer" && docker compose up -d
     
-    # Start Mission Control
-    echo -e "${BLUE}Starting Mission Control...${NC}"
-    cd "$MC_DIR" && docker compose up -d
+    # Start Backend API
+    echo -e "${BLUE}Starting Backend API...${NC}"
+    cd "$BACKEND_DIR" && docker compose up -d
     
     echo ""
     echo -e "${GREEN}✅ All systems started!${NC}"
@@ -64,9 +67,9 @@ function stop() {
     echo -e "${YELLOW}🛑 Stopping DevAlliance...${NC}"
     echo ""
     
-    # Stop Mission Control
-    echo -e "${BLUE}Stopping Mission Control...${NC}"
-    cd "$MC_DIR" && docker compose down
+    # Stop Backend API
+    echo -e "${BLUE}Stopping Backend API...${NC}"
+    cd "$BACKEND_DIR" && docker compose down
     
     # Stop agents
     echo -e "${BLUE}Stopping Arquitecto...${NC}"
@@ -100,17 +103,17 @@ function logs() {
         developer)
             docker logs -f openclaw-developer
             ;;
-        mission-control|mc)
-            docker logs -f devalliance-mission-control
+        backend|api)
+            docker logs -f devalliance-backend
             ;;
         all)
             docker logs -f openclaw-arquitecto &
             docker logs -f openclaw-developer &
-            docker logs -f devalliance-mission-control
+            docker logs -f devalliance-backend
             ;;
         *)
             echo -e "${RED}❌ Unknown service: $service${NC}"
-            echo "Available: arquitecto, developer, mission-control (mc), all"
+            echo "Available: arquitecto, developer, backend (api), all"
             exit 1
             ;;
     esac
@@ -126,7 +129,7 @@ function help() {
     echo "  stop           Stop all services"
     echo "  restart        Restart all services"
     echo "  status         Show system status"
-    echo "  logs [service] Show logs (all, arquitecto, developer, mc)"
+    echo "  logs [service] Show logs (all, arquitecto, developer, backend)"
     echo "  help           Show this help"
     echo ""
 }

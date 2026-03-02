@@ -36,18 +36,14 @@ export const HomePage = () => {
   return (
     <div>
       {/* Hero Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
+      <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-100 mb-2">
           Mission Control Dashboard
         </h1>
         <p className="text-gray-400">
           Monitorea y gestiona todos tus agentes de desarrollo
         </p>
-      </motion.div>
+      </div>
 
       {/* System Overview */}
       <SystemOverview agents={agents} />
