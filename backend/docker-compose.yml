@@ -6,20 +6,17 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: devalliance-backend
-    ports:
-      - "3101:3101"
+    network_mode: host
     environment:
       - NODE_ENV=production
       - PORT=3101
       - HOST=0.0.0.0
-      - MONGODB_URI=mongodb://mongo:27017/devalliance
+      - MONGODB_URI=mongodb://localhost:27017/devalliance
       - BASE_URL=
       - BASE_PATH=
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     depends_on:
       - mongo
-    networks:
-      - devalliance-network
     restart: unless-stopped
     volumes:
       - ./config:/app/config:ro

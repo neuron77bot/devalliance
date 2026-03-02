@@ -99,8 +99,8 @@ export class AgentService {
     const gatewayToken = this.dockerService.generateGatewayToken();
 
     // Create agent object
-    // Note: Using network host mode + socat tunnel
-    // Backend connects to localhost (socat forwards to host)
+    // Note: Both backend and agent containers use network host mode
+    // Backend connects to gateway via localhost
     const agent: Agent = {
       id,
       name: data.name,
@@ -108,9 +108,9 @@ export class AgentService {
       description: data.description,
       capabilities: data.capabilities || [],
       gateway: {
-        url: `ws://localhost:${port}`,
+        url: `ws://127.0.0.1:${port}`,
         token: gatewayToken,
-        healthUrl: `http://localhost:${port}/healthz`
+        healthUrl: `http://127.0.0.1:${port}/healthz`
       }
     };
 
