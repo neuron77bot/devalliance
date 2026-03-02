@@ -15,6 +15,9 @@ yarn-error.log*
 openclaw-containers/instances/*/workspace/
 openclaw-containers/instances/*/config/
 
+# OpenClaw source code (external repository)
+openclaw-containers/openclaw/
+
 # Docker volumes
 openclaw-containers/sandboxes/
 
