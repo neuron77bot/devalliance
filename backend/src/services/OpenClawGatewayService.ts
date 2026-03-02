@@ -322,7 +322,7 @@ export class OpenClawGatewayService extends EventEmitter {
           mode: 'cli'
         },
         role: 'operator',
-        scopes: ['operator.read', 'operator.write'],
+        scopes: ['operator.read', 'operator.write', 'operator.admin'],
         caps: [],
         commands: [],
         permissions: {},
