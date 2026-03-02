@@ -73,7 +73,40 @@ export default async function taskRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Get task by ID
+  // Get task statistics (DEBE IR ANTES DE /tasks/:id)
+  fastify.get('/tasks/stats/global', async (_request, reply) => {
+    try {
+      const stats = await taskService.getTaskStats();
+      return reply.send(stats);
+    } catch (error: any) {
+      return reply.code(500).send({ error: error.message });
+    }
+  });
+
+  // Get queue statistics (DEBE IR ANTES DE /tasks/:id)
+  fastify.get('/tasks/queue/stats/global', async (_request, reply) => {
+    try {
+      const stats = await queueService.getQueueStats();
+      return reply.send(stats);
+    } catch (error: any) {
+      return reply.code(500).send({ error: error.message });
+    }
+  });
+
+  // Get agent queue (DEBE IR ANTES DE /tasks/:id)
+  fastify.get<{ Params: { agentId: string } }>(
+    '/tasks/queue/:agentId',
+    async (request, reply) => {
+      try {
+        const queue = await queueService.getAgentQueue(request.params.agentId);
+        return reply.send(queue);
+      } catch (error: any) {
+        return reply.code(500).send({ error: error.message });
+      }
+    }
+  );
+
+  // Get task by ID (DEBE IR DESPUÉS DE RUTAS ESPECÍFICAS)
   fastify.get<{ Params: { id: string } }>(
     '/tasks/:id',
     async (request, reply) => {
@@ -323,37 +356,4 @@ export default async function taskRoutes(fastify: FastifyInstance) {
       }
     }
   );
-
-  // Get task statistics
-  fastify.get('/tasks/stats/global', async (_request, reply) => {
-    try {
-      const stats = await taskService.getTaskStats();
-      return reply.send(stats);
-    } catch (error: any) {
-      return reply.code(500).send({ error: error.message });
-    }
-  });
-
-  // Get agent queue
-  fastify.get<{ Params: { agentId: string } }>(
-    '/tasks/queue/:agentId',
-    async (request, reply) => {
-      try {
-        const queue = await queueService.getAgentQueue(request.params.agentId);
-        return reply.send(queue);
-      } catch (error: any) {
-        return reply.code(500).send({ error: error.message });
-      }
-    }
-  );
-
-  // Get queue statistics
-  fastify.get('/tasks/queue/stats/global', async (_request, reply) => {
-    try {
-      const stats = await queueService.getQueueStats();
-      return reply.send(stats);
-    } catch (error: any) {
-      return reply.code(500).send({ error: error.message });
-    }
-  });
 }
