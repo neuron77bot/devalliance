@@ -229,7 +229,7 @@ interface IAgentOutput {
 POST   /api/agents/:id/connect         - Conectar a gateway
 POST   /api/agents/:id/disconnect      - Desconectar gateway
 GET    /api/agents/:id/output          - Stream de outputs
-GET    /api/agents/:id/status          - Status en tiempo real
+GET    /api/agents/:id/gateway-status  - Gateway status en tiempo real
 POST   /api/agents/:id/reconnect       - Forzar reconexión
 
 POST   /api/tasks/:id/execute          - Ejecutar tarea

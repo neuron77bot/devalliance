@@ -17,7 +17,7 @@ export function RealTimeAgentStatus({ agentId, showMetrics = false }: RealTimeAg
     const loadStatus = async () => {
       try {
         setLoading(true);
-        const response = await fetchAPI(`/agents/${agentId}/status`);
+        const response = await fetchAPI(`/agents/${agentId}/gateway-status`);
         setStatus(response.status);
       } catch (err) {
         console.error('Failed to load agent status:', err);

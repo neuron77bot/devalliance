@@ -224,9 +224,9 @@ export default async function gatewayRoutes(
   });
 
   /**
-   * Get agent status
+   * Get agent gateway status (real-time from OpenClaw)
    */
-  fastify.get('/agents/:id/status', async (
+  fastify.get('/agents/:id/gateway-status', async (
     request: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
   ) => {
