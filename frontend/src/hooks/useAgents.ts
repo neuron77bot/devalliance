@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import type { Agent } from '../types/api';
-import { mockAgents } from '../mocks/agents';
+import { fetchAPI, ApiError } from '../lib/api-client';
+import { adaptBackendAgentsResponse } from '../lib/api-adapters';
+// import { mockAgents } from '../mocks/agents'; // Comentado: Ya no usa datos mock
 
 /**
- * Hook para obtener la lista de agentes
- * Actualmente usa datos mock, preparado para integración con API real
+ * Hook para obtener la lista de agentes desde el backend real
+ * Consume /app/api/agents via proxy Nginx
  */
 export const useAgents = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -12,23 +14,30 @@ export const useAgents = () => {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    // Simular delay de red
     const fetchAgents = async () => {
       try {
         setLoading(true);
-        
-        // TODO: Reemplazar con llamada real a la API
-        // const response = await fetch('/api/agents');
-        // const data = await response.json();
-        // setAgents(data);
-        
-        // Simulación de delay de red
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        setAgents(mockAgents);
         setError(null);
+        
+        // Llamada real a la API
+        // El backend retorna: { ok: boolean, agents: [...] }
+        const response = await fetchAPI<{ ok: boolean; agents: any[] }>('/api/agents');
+        
+        // Transformar respuesta del backend al formato del frontend
+        const adaptedAgents = adaptBackendAgentsResponse(response);
+        setAgents(adaptedAgents);
       } catch (err) {
-        setError(err as Error);
+        // Manejo específico de errores HTTP
+        if (err instanceof ApiError) {
+          console.error(`API Error ${err.status}:`, err.message);
+          setError(new Error(`Error ${err.status}: ${err.statusText}`));
+        } else {
+          console.error('Unexpected error:', err);
+          setError(err as Error);
+        }
+        
+        // En caso de error, mantener array vacío
+        setAgents([]);
       } finally {
         setLoading(false);
       }
