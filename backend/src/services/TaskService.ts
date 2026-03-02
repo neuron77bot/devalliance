@@ -1,14 +1,18 @@
 import { TaskModel, ITask, TaskStatus } from '../models/Task.model';
 import { InteractionService } from './InteractionService';
 import { QueueService } from './QueueService';
+import { OpenClawGatewayService } from './OpenClawGatewayService';
+import { AgentOutputModel } from '../models/AgentOutput.model';
+import { EventEmitter } from 'events';
 
 export interface TaskStateMachineTransitions {
   [key: string]: TaskStatus[];
 }
 
-export class TaskService {
+export class TaskService extends EventEmitter {
   private interactionService: InteractionService;
   private queueService: QueueService;
+  private gatewayService?: OpenClawGatewayService;
 
   // Valid state transitions
   private readonly stateTransitions: TaskStateMachineTransitions = {
@@ -21,9 +25,18 @@ export class TaskService {
     cancelled: [] // terminal state
   };
 
-  constructor() {
+  constructor(gatewayService?: OpenClawGatewayService) {
+    super();
     this.interactionService = new InteractionService();
     this.queueService = new QueueService();
+    this.gatewayService = gatewayService;
+  }
+
+  /**
+   * Set gateway service (for lazy initialization)
+   */
+  setGatewayService(gatewayService: OpenClawGatewayService): void {
+    this.gatewayService = gatewayService;
   }
 
   /**
@@ -347,6 +360,209 @@ export class TaskService {
 
     const total = completedTasks.reduce((sum, task) => sum + (task.actualDuration || 0), 0);
     return Math.round(total / completedTasks.length);
+  }
+
+  /**
+   * Execute task on OpenClaw agent
+   */
+  async executeTask(taskId: string): Promise<any> {
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      throw new Error(`Task ${taskId} not found`);
+    }
+
+    if (!task.assignedTo) {
+      throw new Error(`Task ${taskId} is not assigned to any agent`);
+    }
+
+    if (!this.gatewayService) {
+      throw new Error('Gateway service not initialized');
+    }
+
+    // Check if agent is connected
+    const status = this.gatewayService.getConnectionStatus(task.assignedTo);
+    if (status !== 'connected') {
+      throw new Error(`Agent ${task.assignedTo} is not connected (status: ${status})`);
+    }
+
+    // Build task prompt
+    const prompt = this.buildTaskPrompt(task);
+
+    // Log output: Starting execution
+    await this.logOutput(task.assignedTo, taskId, 'output', '🚀 Starting task execution...');
+
+    try {
+      // Change status to in_progress
+      await this.changeStatus(taskId, 'in_progress', task.assignedTo);
+
+      // Send task to OpenClaw via RPC
+      const result = await this.gatewayService.sendRPC(
+        task.assignedTo,
+        'sessions.send',
+        {
+          message: prompt,
+          context: {
+            taskId,
+            title: task.title,
+            priority: task.priority
+          }
+        }
+      );
+
+      // Log the result
+      await this.logOutput(task.assignedTo, taskId, 'result', JSON.stringify(result, null, 2));
+
+      // Emit event for real-time updates
+      this.emit('task:output', {
+        taskId,
+        agentId: task.assignedTo,
+        type: 'result',
+        content: result
+      });
+
+      return result;
+
+    } catch (error: any) {
+      // Log error
+      await this.logOutput(task.assignedTo, taskId, 'error', `❌ Execution error: ${error.message}`);
+
+      // Update task status to failed
+      await this.changeStatus(taskId, 'failed', task.assignedTo);
+
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel task execution
+   */
+  async cancelTask(taskId: string, agentId?: string): Promise<any> {
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      throw new Error(`Task ${taskId} not found`);
+    }
+
+    // Change status to cancelled
+    await this.changeStatus(taskId, 'cancelled', agentId);
+
+    // Log cancellation
+    await this.logOutput(
+      task.assignedTo || 'system',
+      taskId,
+      'output',
+      '🛑 Task execution cancelled'
+    );
+
+    return task;
+  }
+
+  /**
+   * Get task output logs
+   */
+  async getTaskOutput(taskId: string, limit: number = 100): Promise<any[]> {
+    return await AgentOutputModel.find({ taskId })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean();
+  }
+
+  /**
+   * Get agent output logs
+   */
+  async getAgentOutput(agentId: string, limit: number = 100): Promise<any[]> {
+    return await AgentOutputModel.find({ agentId })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean();
+  }
+
+  /**
+   * Handle task result from OpenClaw
+   */
+  async handleTaskResult(taskId: string, result: any): Promise<void> {
+    const task = await TaskModel.findById(taskId);
+    if (!task) return;
+
+    try {
+      // Log result
+      await this.logOutput(
+        task.assignedTo || 'system',
+        taskId,
+        'result',
+        typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+      );
+
+      // Mark as completed
+      await this.changeStatus(taskId, 'completed', task.assignedTo);
+
+      console.log(`[TaskService] ✅ Task ${taskId} completed successfully`);
+
+    } catch (error: any) {
+      console.error(`[TaskService] Failed to handle task result for ${taskId}:`, error.message);
+    }
+  }
+
+  /**
+   * Build task prompt for OpenClaw
+   */
+  private buildTaskPrompt(task: ITask): string {
+    const lines = [
+      `Task ID: ${task._id}`,
+      `Title: ${task.title}`,
+      `Description: ${task.description}`,
+      `Priority: ${task.priority}`,
+      `Estimated Duration: ${task.estimatedDuration || 'N/A'} minutes`,
+      ``,
+      `Please execute this task and report back when completed.`,
+      `Include any code, files created, or actions taken.`
+    ];
+
+    if (task.tags && task.tags.length > 0) {
+      lines.push(`Tags: ${task.tags.join(', ')}`);
+    }
+
+    if (task.metadata && Object.keys(task.metadata).length > 0) {
+      lines.push(`\nAdditional Context:`);
+      lines.push(JSON.stringify(task.metadata, null, 2));
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Log output to database
+   */
+  private async logOutput(
+    agentId: string,
+    taskId: string,
+    type: 'output' | 'progress' | 'tool_call' | 'error' | 'result',
+    content: string,
+    metadata?: any
+  ): Promise<void> {
+    try {
+      const output = new AgentOutputModel({
+        agentId,
+        taskId,
+        type,
+        content,
+        metadata
+      });
+
+      await output.save();
+
+      // Emit event for real-time updates
+      this.emit('task:output', {
+        taskId,
+        agentId,
+        type,
+        content,
+        metadata,
+        timestamp: output.timestamp
+      });
+
+    } catch (error) {
+      console.error('[TaskService] Failed to log output:', error);
+    }
   }
 
   /**
