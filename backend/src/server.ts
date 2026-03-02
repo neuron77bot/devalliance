@@ -8,7 +8,10 @@ import agentRoutes from './routes/agents.routes';
 import statusRoutes from './routes/status.routes';
 import healthRoutes from './routes/health.routes';
 import taskRoutes from './routes/tasks.routes';
+import metricsRoutes from './routes/metrics.routes';
+import activityRoutes from './routes/activity.routes';
 import { AgentService } from './services/AgentService';
+import { seedActivities } from './utils/seedActivities';
 import fs from 'fs';
 import path from 'path';
 
@@ -94,6 +97,8 @@ async function registerRoutes() {
     await instance.register(agentRoutes, { prefix: '/api' });
     await instance.register(statusRoutes, { prefix: '/api' });
     await instance.register(taskRoutes, { prefix: '/api' });
+    await instance.register(metricsRoutes, { prefix: '/api' });
+    await instance.register(activityRoutes, { prefix: '/api' });
   });
 }
 
@@ -146,6 +151,9 @@ async function start() {
 
     // Initialize agents from config
     await initializeAgents();
+
+    // Seed initial activities
+    await seedActivities();
 
   } catch (error) {
     fastify.log.error(error);

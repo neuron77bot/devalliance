@@ -4,9 +4,10 @@ import { AgentCard } from './AgentCard';
 interface AgentGridProps {
   agents: Agent[];
   onAgentClick: (agent: Agent) => void;
+  showMetrics?: boolean;
 }
 
-export const AgentGrid = ({ agents, onAgentClick }: AgentGridProps) => {
+export const AgentGrid = ({ agents, onAgentClick, showMetrics = false }: AgentGridProps) => {
   if (agents.length === 0) {
     return (
       <div className="text-center py-12">
@@ -22,6 +23,7 @@ export const AgentGrid = ({ agents, onAgentClick }: AgentGridProps) => {
           key={agent.id}
           agent={agent}
           onClick={() => onAgentClick(agent)}
+          showMetrics={showMetrics}
         />
       ))}
     </div>

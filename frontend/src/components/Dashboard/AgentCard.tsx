@@ -1,14 +1,20 @@
 import { motion } from 'framer-motion';
 import type { Agent } from '../../types/api';
 import { StatusBadge } from './StatusBadge';
+import { AgentMetrics } from './AgentMetrics';
 import { formatUptime, formatResponseTime } from '../../utils/helpers';
+import { useSingleAgentMetrics } from '../../hooks/useMetrics';
 
 interface AgentCardProps {
   agent: Agent;
   onClick?: () => void;
+  showMetrics?: boolean;
 }
 
-export const AgentCard = ({ agent, onClick }: AgentCardProps) => {
+export const AgentCard = ({ agent, onClick, showMetrics = false }: AgentCardProps) => {
+  const { metrics: agentMetrics, loading: metricsLoading } = useSingleAgentMetrics(
+    showMetrics ? agent.id : null
+  );
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -57,22 +63,27 @@ export const AgentCard = ({ agent, onClick }: AgentCardProps) => {
         <div>
           <p className="text-xs text-gray-500 mb-1">Uptime</p>
           <p className="text-sm font-semibold text-gray-200">
-            {formatUptime(agent.metrics.uptime)}
+            {formatUptime(agent.metrics?.uptime || 0)}
           </p>
         </div>
         <div>
           <p className="text-xs text-gray-500 mb-1">Tareas</p>
           <p className="text-sm font-semibold text-gray-200">
-            {agent.metrics.tasksCompleted}
+            {agent.metrics?.tasksCompleted || 0}
           </p>
         </div>
         <div>
           <p className="text-xs text-gray-500 mb-1">Respuesta</p>
           <p className="text-sm font-semibold text-gray-200">
-            {formatResponseTime(agent.metrics.avgResponseTime)}
+            {formatResponseTime(agent.metrics?.avgResponseTime || 0)}
           </p>
         </div>
       </div>
+
+      {/* Extended Metrics (expandible) */}
+      {showMetrics && (
+        <AgentMetrics metrics={agentMetrics} loading={metricsLoading} />
+      )}
     </motion.div>
   );
 };
