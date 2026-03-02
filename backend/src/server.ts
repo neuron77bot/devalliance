@@ -10,15 +10,12 @@ import healthRoutes from './routes/health.routes';
 import taskRoutes from './routes/tasks.routes';
 import metricsRoutes from './routes/metrics.routes';
 import activityRoutes from './routes/activity.routes';
-import { AgentService } from './services/AgentService';
 import { TaskService } from './services/TaskService';
 import { OpenClawGatewayService } from './services/OpenClawGatewayService';
 import { StatusSyncService } from './services/StatusSyncService';
 import { DockerService } from './services/DockerService';
 import gatewayRoutes from './routes/gateway.routes';
 import { seedActivities } from './utils/seedActivities';
-import fs from 'fs';
-import path from 'path';
 
 // Global services (shared across the app)
 let gatewayService: OpenClawGatewayService;
@@ -185,42 +182,11 @@ function setupEventListeners() {
   });
 }
 
-// Initialize agents from config file
-async function initializeAgents() {
-  try {
-    // Try both paths: development and production
-    const devPath = path.join(__dirname, '../config/agents.json');
-    const prodPath = path.join(__dirname, '../../config/agents.json');
-    const configPath = fs.existsSync(devPath) ? devPath : prodPath;
-    
-    if (fs.existsSync(configPath)) {
-      fastify.log.info('Loading agents from config file...');
-      const configData = fs.readFileSync(configPath, 'utf8');
-      const config = JSON.parse(configData);
-      
-      const agentService = new AgentService();
-      await agentService.initializeFromConfig(config.agents);
-      
-      fastify.log.info(`✅ Initialized ${config.agents.length} agents from config`);
-      config.agents.forEach((a: any) => {
-        fastify.log.info(`   - ${a.name} (${a.role})`);
-      });
-    } else {
-      fastify.log.warn('⚠️  No config/agents.json found, skipping agent initialization');
-    }
-  } catch (error) {
-    fastify.log.error({ error }, '❌ Failed to initialize agents');
-  }
-}
-
 // Startup
 async function start() {
   try {
     // Register plugins
     await registerPlugins();
-
-    // Initialize agents from config FIRST
-    await initializeAgents();
 
     // Initialize OpenClaw services BEFORE registering routes
     await initializeOpenClawServices();

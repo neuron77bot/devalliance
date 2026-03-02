@@ -2,12 +2,10 @@ import { AgentModel, IAgent } from '../models/Agent.model';
 import { Agent, CreateAgent, UpdateAgent } from '../schemas/agent.schema';
 import { GatewayService } from './GatewayService';
 import { DockerService } from './DockerService';
-import * as fs from 'fs/promises';
 
 export class AgentService {
   private gatewayService: GatewayService;
   private dockerService: DockerService;
-  private readonly CONFIG_PATH = '/var/www/devalliance/backend/config/agents.json';
 
   constructor() {
     this.gatewayService = new GatewayService();
@@ -132,9 +130,6 @@ export class AgentService {
       throw error;
     }
 
-    // Update config file
-    await this.updateConfigFile();
-
     return agent;
   }
 
@@ -160,9 +155,6 @@ export class AgentService {
     // Save to database
     await this.upsertAgent(updatedAgent);
 
-    // Update config file
-    await this.updateConfigFile();
-
     return updatedAgent;
   }
 
@@ -185,9 +177,6 @@ export class AgentService {
 
     // Delete from database
     await AgentModel.deleteOne({ id });
-
-    // Update config file
-    await this.updateConfigFile();
   }
 
   /**
@@ -304,41 +293,5 @@ export class AgentService {
     };
 
     return await this.gatewayService.callGateway(agentObj, method, params);
-  }
-
-  /**
-   * Update config/agents.json with current agents from database
-   */
-  private async updateConfigFile(): Promise<void> {
-    try {
-      const agents = await this.getAllAgents();
-      const configData = {
-        agents: agents.map((agent) => ({
-          id: agent.id,
-          name: agent.name,
-          role: agent.role,
-          description: agent.description,
-          gateway: agent.gateway,
-          capabilities: agent.capabilities
-        }))
-      };
-
-      await fs.writeFile(
-        this.CONFIG_PATH,
-        JSON.stringify(configData, null, 2)
-      );
-    } catch (error) {
-      console.error('Error updating config file:', error);
-      // Don't throw - config file update is not critical
-    }
-  }
-
-  /**
-   * Initialize agents from config file
-   */
-  async initializeFromConfig(agents: Agent[]): Promise<void> {
-    for (const agent of agents) {
-      await this.upsertAgent(agent);
-    }
   }
 }
