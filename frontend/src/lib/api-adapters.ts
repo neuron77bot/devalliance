@@ -15,6 +15,8 @@ interface BackendAgentsResponse {
     role: string;
     description: string;
     capabilities: string[];
+    status?: string;
+    containerRunning?: boolean;
   }>;
 }
 
@@ -66,27 +68,36 @@ function extractPort(url: string): number {
 
 /**
  * Transforma la respuesta del backend al tipo Agent del frontend
- * Agrega valores por defecto para campos faltantes
+ * Usa el estado real del contenedor Docker
  */
 export function adaptBackendAgentsResponse(response: BackendAgentsResponse): Agent[] {
-  return response.agents.map((agent) => ({
-    id: agent.id,
-    name: agent.name,
-    role: agent.role,
-    description: agent.description,
-    capabilities: agent.capabilities,
-    // Valores por defecto para campos no incluidos en la respuesta básica
-    status: 'healthy' as AgentStatus, // Asumimos healthy por defecto
-    gateway: {
-      url: `ws://openclaw-${agent.id}:18789`, // URL por defecto
-      port: 18789, // Puerto por defecto
-    },
-    metrics: {
-      uptime: 0,
-      tasksCompleted: 0,
-      avgResponseTime: 0,
-    },
-  }));
+  return response.agents.map((agent) => {
+    // Mapear status del backend al tipo del frontend
+    let status: AgentStatus = 'offline';
+    if (agent.status === 'healthy') status = 'healthy';
+    else if (agent.status === 'warning') status = 'warning';
+    else if (agent.status === 'error') status = 'error';
+    else if (agent.status === 'offline') status = 'offline';
+    
+    return {
+      id: agent.id,
+      name: agent.name,
+      role: agent.role,
+      description: agent.description,
+      capabilities: agent.capabilities,
+      // Usar estado real del backend (desde Docker)
+      status,
+      gateway: {
+        url: `ws://openclaw-${agent.id}:18789`,
+        port: 18789,
+      },
+      metrics: {
+        uptime: 0,
+        tasksCompleted: 0,
+        avgResponseTime: 0,
+      },
+    };
+  });
 }
 
 /**
