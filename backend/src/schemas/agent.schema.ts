@@ -15,6 +15,23 @@ export const AgentSchema = Type.Object({
   capabilities: Type.Array(Type.String())
 });
 
+// Schema for creating a new agent
+export const CreateAgentSchema = Type.Object({
+  name: Type.String({ minLength: 1 }),
+  role: Type.String({ minLength: 1 }),
+  description: Type.String({ minLength: 1 }),
+  capabilities: Type.Optional(Type.Array(Type.String())),
+  port: Type.Optional(Type.Number({ minimum: 1024, maximum: 65535 }))
+});
+
+// Schema for updating an existing agent
+export const UpdateAgentSchema = Type.Object({
+  name: Type.Optional(Type.String({ minLength: 1 })),
+  role: Type.Optional(Type.String({ minLength: 1 })),
+  description: Type.Optional(Type.String({ minLength: 1 })),
+  capabilities: Type.Optional(Type.Array(Type.String()))
+});
+
 export const AgentListResponseSchema = Type.Object({
   ok: Type.Boolean(),
   agents: Type.Array(Type.Object({
@@ -47,6 +64,36 @@ export const RpcCallResponseSchema = Type.Object({
   error: Type.Optional(Type.String())
 });
 
+// Response schema for agent creation
+export const CreateAgentResponseSchema = Type.Object({
+  ok: Type.Boolean(),
+  agent: Type.Optional(AgentSchema),
+  error: Type.Optional(Type.String())
+});
+
+// Response schema for agent update
+export const UpdateAgentResponseSchema = Type.Object({
+  ok: Type.Boolean(),
+  agent: Type.Optional(AgentSchema),
+  error: Type.Optional(Type.String())
+});
+
+// Response schema for agent deletion
+export const DeleteAgentResponseSchema = Type.Object({
+  ok: Type.Boolean(),
+  message: Type.Optional(Type.String()),
+  error: Type.Optional(Type.String())
+});
+
+// Response schema for container operations (start/stop/restart)
+export const ContainerOperationResponseSchema = Type.Object({
+  ok: Type.Boolean(),
+  message: Type.Optional(Type.String()),
+  error: Type.Optional(Type.String())
+});
+
 export type Agent = Static<typeof AgentSchema>;
 export type Gateway = Static<typeof GatewaySchema>;
 export type RpcCallBody = Static<typeof RpcCallBodySchema>;
+export type CreateAgent = Static<typeof CreateAgentSchema>;
+export type UpdateAgent = Static<typeof UpdateAgentSchema>;

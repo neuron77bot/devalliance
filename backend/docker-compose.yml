@@ -22,6 +22,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./config:/app/config:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/www/devalliance/openclaw-containers:/var/www/devalliance/openclaw-containers
 
   mongo:
     image: mongo:7

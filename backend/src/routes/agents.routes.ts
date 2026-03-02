@@ -4,7 +4,13 @@ import {
   AgentListResponseSchema,
   AgentStatusResponseSchema,
   RpcCallBodySchema,
-  RpcCallResponseSchema
+  RpcCallResponseSchema,
+  CreateAgentSchema,
+  UpdateAgentSchema,
+  CreateAgentResponseSchema,
+  UpdateAgentResponseSchema,
+  DeleteAgentResponseSchema,
+  ContainerOperationResponseSchema
 } from '../schemas/agent.schema';
 import { ErrorResponseSchema } from '../schemas/common.schema';
 
@@ -41,6 +47,246 @@ export default async function agentRoutes(fastify: FastifyInstance) {
       } catch (error) {
         fastify.log.error(error);
         return reply.status(500).send({
+          ok: false,
+          error: (error as Error).message
+        });
+      }
+    }
+  );
+
+  // POST /api/agents - Create new agent
+  fastify.post<{ Body: { name: string; role: string; description: string; capabilities?: string[]; port?: number } }>(
+    '/agents',
+    {
+      schema: {
+        tags: ['Agents'],
+        description: 'Create a new agent with Docker container',
+        body: CreateAgentSchema,
+        response: {
+          201: CreateAgentResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const agent = await agentService.createAgent(request.body);
+        
+        return reply.status(201).send({
+          ok: true,
+          agent
+        });
+      } catch (error) {
+        fastify.log.error(error);
+        const statusCode = (error as Error).message.includes('already exists') ? 400 : 500;
+        return reply.status(statusCode).send({
+          ok: false,
+          error: (error as Error).message
+        });
+      }
+    }
+  );
+
+  // PUT /api/agents/:id - Update existing agent
+  fastify.put<{ Params: { id: string }; Body: { name?: string; role?: string; description?: string; capabilities?: string[] } }>(
+    '/agents/:id',
+    {
+      schema: {
+        tags: ['Agents'],
+        description: 'Update an existing agent',
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
+        body: UpdateAgentSchema,
+        response: {
+          200: UpdateAgentResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const agent = await agentService.updateAgent(id, request.body);
+        
+        return {
+          ok: true,
+          agent
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        const statusCode = (error as Error).message.includes('not found') ? 404 : 500;
+        return reply.status(statusCode).send({
+          ok: false,
+          error: (error as Error).message
+        });
+      }
+    }
+  );
+
+  // DELETE /api/agents/:id - Delete agent
+  fastify.delete<{ Params: { id: string } }>(
+    '/agents/:id',
+    {
+      schema: {
+        tags: ['Agents'],
+        description: 'Delete an agent and its Docker container',
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
+        response: {
+          200: DeleteAgentResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        await agentService.deleteAgent(id);
+        
+        return {
+          ok: true,
+          message: `Agent ${id} deleted successfully`
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        const statusCode = (error as Error).message.includes('not found') ? 404 : 500;
+        return reply.status(statusCode).send({
+          ok: false,
+          error: (error as Error).message
+        });
+      }
+    }
+  );
+
+  // POST /api/agents/:id/start - Start agent container
+  fastify.post<{ Params: { id: string } }>(
+    '/agents/:id/start',
+    {
+      schema: {
+        tags: ['Agents'],
+        description: 'Start agent Docker container',
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
+        response: {
+          200: ContainerOperationResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        await agentService.startAgent(id);
+        
+        return {
+          ok: true,
+          message: `Agent ${id} started successfully`
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        const statusCode = (error as Error).message.includes('not found') ? 404 : 500;
+        return reply.status(statusCode).send({
+          ok: false,
+          error: (error as Error).message
+        });
+      }
+    }
+  );
+
+  // POST /api/agents/:id/stop - Stop agent container
+  fastify.post<{ Params: { id: string } }>(
+    '/agents/:id/stop',
+    {
+      schema: {
+        tags: ['Agents'],
+        description: 'Stop agent Docker container',
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
+        response: {
+          200: ContainerOperationResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        await agentService.stopAgent(id);
+        
+        return {
+          ok: true,
+          message: `Agent ${id} stopped successfully`
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        const statusCode = (error as Error).message.includes('not found') ? 404 : 500;
+        return reply.status(statusCode).send({
+          ok: false,
+          error: (error as Error).message
+        });
+      }
+    }
+  );
+
+  // POST /api/agents/:id/restart - Restart agent container
+  fastify.post<{ Params: { id: string } }>(
+    '/agents/:id/restart',
+    {
+      schema: {
+        tags: ['Agents'],
+        description: 'Restart agent Docker container',
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
+        response: {
+          200: ContainerOperationResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        await agentService.restartAgent(id);
+        
+        return {
+          ok: true,
+          message: `Agent ${id} restarted successfully`
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        const statusCode = (error as Error).message.includes('not found') ? 404 : 500;
+        return reply.status(statusCode).send({
           ok: false,
           error: (error as Error).message
         });

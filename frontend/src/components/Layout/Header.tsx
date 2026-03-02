@@ -1,11 +1,14 @@
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { Home, Users, Settings } from 'lucide-react';
 
 interface HeaderProps {
   systemStatus?: 'operational' | 'degraded' | 'down';
 }
 
 export const Header = ({ systemStatus = 'operational' }: HeaderProps) => {
+  const location = useLocation();
+  
   const statusColors = {
     operational: 'bg-green-500',
     degraded: 'bg-yellow-500',
@@ -17,6 +20,8 @@ export const Header = ({ systemStatus = 'operational' }: HeaderProps) => {
     degraded: 'Degradado',
     down: 'Fuera de servicio'
   };
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <motion.header
@@ -36,6 +41,43 @@ export const Header = ({ systemStatus = 'operational' }: HeaderProps) => {
               <p className="text-xs text-gray-400">Mission Control</p>
             </div>
           </Link>
+
+          {/* Navigation */}
+          <nav className="flex items-center gap-2">
+            <Link
+              to="/"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                isActive('/')
+                  ? 'bg-cyan-600 text-white'
+                  : 'text-gray-300 hover:bg-navy-800'
+              }`}
+            >
+              <Home size={18} />
+              <span className="text-sm font-medium">Dashboard</span>
+            </Link>
+            <Link
+              to="/agents"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                isActive('/agents')
+                  ? 'bg-cyan-600 text-white'
+                  : 'text-gray-300 hover:bg-navy-800'
+              }`}
+            >
+              <Users size={18} />
+              <span className="text-sm font-medium">Agents</span>
+            </Link>
+            <Link
+              to="/agents/manage"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                isActive('/agents/manage')
+                  ? 'bg-cyan-600 text-white'
+                  : 'text-gray-300 hover:bg-navy-800'
+              }`}
+            >
+              <Settings size={18} />
+              <span className="text-sm font-medium">Manage</span>
+            </Link>
+          </nav>
 
           {/* System Status */}
           <div className="flex items-center gap-3">

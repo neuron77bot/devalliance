@@ -3,6 +3,7 @@ import { Header } from './components/Layout/Header';
 import { Footer } from './components/Layout/Footer';
 import { HomePage } from './pages/HomePage';
 import { AgentsPage } from './pages/AgentsPage';
+import { AgentManagement } from './pages/AgentManagement';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/agents/manage" element={<AgentManagement />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
