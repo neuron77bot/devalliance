@@ -37,8 +37,10 @@ export function useTasks(filters?: TaskFilters) {
       const queryString = params.toString();
       const endpoint = queryString ? `/tasks?${queryString}` : '/tasks';
       
-      const data = await fetchAPI<Task[]>(endpoint);
-      setTasks(data);
+      const data = await fetchAPI<Task[] | { tasks: Task[] }>(endpoint);
+      // Handle both array and object response formats
+      const tasksArray = Array.isArray(data) ? data : (data as any).tasks || [];
+      setTasks(tasksArray);
       setError(null);
     } catch (err) {
       setError(err as Error);

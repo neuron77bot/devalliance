@@ -34,6 +34,7 @@ export function TaskBoard() {
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
+    if (!Array.isArray(tasks)) return [];
     return tasks.filter(task => {
       if (filters.search) {
         const search = filters.search.toLowerCase();
@@ -83,7 +84,7 @@ export function TaskBoard() {
 
     const taskId = active.id as string;
     const newStatus = over.id as TaskStatus;
-    const task = tasks.find(t => t._id === taskId);
+    const task = Array.isArray(tasks) ? tasks.find(t => t._id === taskId) : undefined;
 
     if (task && task.status !== newStatus) {
       try {
@@ -95,7 +96,7 @@ export function TaskBoard() {
     }
   };
 
-  const activeTask = activeTaskId ? tasks.find(t => t._id === activeTaskId) : null;
+  const activeTask = activeTaskId && Array.isArray(tasks) ? tasks.find(t => t._id === activeTaskId) : null;
 
   if (loading) {
     return (
@@ -237,8 +238,10 @@ export function TaskBoard() {
             onUpdate={() => {
               refresh();
               // Update selected task
-              const updated = tasks.find(t => t._id === selectedTask._id);
-              if (updated) setSelectedTask(updated);
+              if (Array.isArray(tasks)) {
+                const updated = tasks.find(t => t._id === selectedTask._id);
+                if (updated) setSelectedTask(updated);
+              }
             }}
           />
         )}
