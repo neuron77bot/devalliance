@@ -74,9 +74,16 @@ export class DockerService {
     // Create instance directory
     await fs.mkdir(instancePath, { recursive: true });
 
-    // Create subdirectories
-    await fs.mkdir(path.join(instancePath, 'workspace'), { recursive: true });
-    await fs.mkdir(path.join(instancePath, 'config'), { recursive: true });
+    // Create openclaw root directory (will be mounted as /home/node/.openclaw)
+    const openclawDir = path.join(instancePath, '.openclaw');
+    await fs.mkdir(openclawDir, { recursive: true });
+    
+    // Create subdirectories inside .openclaw
+    await fs.mkdir(path.join(openclawDir, 'workspace'), { recursive: true });
+    await fs.mkdir(path.join(openclawDir, 'config'), { recursive: true });
+    // Pre-create canvas and cron dirs to avoid EACCES errors
+    await fs.mkdir(path.join(openclawDir, 'canvas'), { recursive: true });
+    await fs.mkdir(path.join(openclawDir, 'cron'), { recursive: true });
 
     // Create config.json
     const configData = {
@@ -93,10 +100,9 @@ export class DockerService {
     );
 
     // Create .env file for container
-    // Note: OPENCLAW_GATEWAY_PORT is NOT included because OpenClaw internally
-    // always listens on port 18789. The external port mapping is handled by Docker (-p flag).
     const envContent = `OPENCLAW_GATEWAY_TOKEN=${config.gatewayToken}
 OPENCLAW_AGENT_ID=${config.id}
+OPENCLAW_GATEWAY_PORT=${config.port}
 ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
 `;
 
@@ -104,6 +110,28 @@ ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
       path.join(instancePath, '.env'),
       envContent
     );
+
+    // Create openclaw.json config file
+    const openclawConfig = {
+      gateway: {
+        bind: 'lan',
+        port: config.port,
+        mode: 'local'
+      }
+    };
+
+    await fs.writeFile(
+      path.join(openclawDir, 'config', 'openclaw.json'),
+      JSON.stringify(openclawConfig, null, 2)
+    );
+
+    // Set correct ownership (UID 1000 = user 'node' inside container)
+    try {
+      await execAsync(`chown -R 1000:1000 ${openclawDir}`);
+    } catch (error) {
+      console.error(`Warning: Could not set ownership for ${openclawDir}:`, error);
+      // Don't throw - ownership issues are not fatal
+    }
   }
 
   /**
@@ -125,19 +153,20 @@ ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
   async createContainer(config: DockerContainerConfig): Promise<void> {
     const containerName = `openclaw-${config.id}`;
     const instancePath = path.join(this.INSTANCES_BASE_PATH, config.id);
+    const openclawDir = path.join(instancePath, '.openclaw');
 
     // Create instance directory first
     await this.createInstanceDirectory(config);
 
     try {
       // Build docker run command
+      // Mount entire .openclaw directory to avoid permission issues
+      // Configuration is handled via openclaw.json and env vars
       const dockerCmd = [
         'docker run -d',
         `--name ${containerName}`,
-        `--network ${this.NETWORK_NAME}`,
-        `-p ${config.port}:18789`,
-        `-v ${instancePath}/workspace:/root/.openclaw/workspace`,
-        `-v ${instancePath}/config:/root/.openclaw/config`,
+        '--network host',
+        `-v ${openclawDir}:/home/node/.openclaw`,
         `--env-file ${instancePath}/.env`,
         '--restart unless-stopped',
         this.OPENCLAW_IMAGE
