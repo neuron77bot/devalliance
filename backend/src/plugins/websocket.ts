@@ -8,7 +8,10 @@ import { metricsService } from '../services/MetricsService';
 declare module 'fastify' {
   interface FastifyInstance {
     websocketClients: Set<WebSocket>;
-    websocketBroadcast: { clients: Set<WebSocket> };
+    websocketBroadcast: { 
+      clients: Set<WebSocket>;
+      send: (type: string, data: any) => void;
+    };
   }
 }
 
@@ -19,8 +22,30 @@ async function websocketPlugin(fastify: FastifyInstance) {
   const clients = new Set<WebSocket>();
   fastify.decorate('websocketClients', clients);
   
+  // Helper para broadcast messages
+  const broadcast = {
+    clients,
+    send: (type: string, data: any) => {
+      const message = JSON.stringify({
+        type,
+        data,
+        timestamp: new Date().toISOString()
+      });
+      
+      clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          try {
+            client.send(message);
+          } catch (error) {
+            fastify.log.error({ error }, 'Error broadcasting to client');
+          }
+        }
+      });
+    }
+  };
+  
   // Decorar también como websocketBroadcast para compatibilidad con routes
-  fastify.decorate('websocketBroadcast', { clients });
+  fastify.decorate('websocketBroadcast', broadcast);
   
   // WebSocket endpoint para real-time updates
   fastify.get('/ws', { websocket: true }, (socket) => {

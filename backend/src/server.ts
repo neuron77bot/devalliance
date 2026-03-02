@@ -11,9 +11,20 @@ import taskRoutes from './routes/tasks.routes';
 import metricsRoutes from './routes/metrics.routes';
 import activityRoutes from './routes/activity.routes';
 import { AgentService } from './services/AgentService';
+import { TaskService } from './services/TaskService';
+import { OpenClawGatewayService } from './services/OpenClawGatewayService';
+import { StatusSyncService } from './services/StatusSyncService';
+import { DockerService } from './services/DockerService';
+import gatewayRoutes from './routes/gateway.routes';
 import { seedActivities } from './utils/seedActivities';
 import fs from 'fs';
 import path from 'path';
+
+// Global services (shared across the app)
+let gatewayService: OpenClawGatewayService;
+let taskService: TaskService;
+let statusSyncService: StatusSyncService;
+let dockerService: DockerService;
 
 // Environment variables
 const PORT = parseInt(process.env.PORT || '3100');
@@ -99,6 +110,78 @@ async function registerRoutes() {
     await instance.register(taskRoutes, { prefix: '/api' });
     await instance.register(metricsRoutes, { prefix: '/api' });
     await instance.register(activityRoutes, { prefix: '/api' });
+    
+    // Gateway routes (requires services to be initialized)
+    await instance.register(async (gatewayInstance) => {
+      await gatewayRoutes(gatewayInstance, gatewayService, taskService, statusSyncService);
+    }, { prefix: '/api' });
+  });
+}
+
+// Initialize OpenClaw services
+async function initializeOpenClawServices() {
+  try {
+    console.log('[OpenClaw] Initializing services...');
+    
+    // Initialize Docker service
+    dockerService = new DockerService();
+    
+    // Initialize Gateway service
+    gatewayService = new OpenClawGatewayService();
+    
+    // Initialize Task service with gateway
+    taskService = new TaskService(gatewayService);
+    
+    // Initialize Status Sync service
+    statusSyncService = new StatusSyncService(gatewayService, dockerService);
+    
+    // Set up event listeners for real-time updates
+    setupEventListeners();
+    
+    // Connect to all agents
+    await gatewayService.initializeAllAgents();
+    
+    // Start status sync
+    statusSyncService.startPeriodicSync(30000); // 30 seconds
+    
+    console.log('[OpenClaw] ✅ Services initialized successfully');
+    
+  } catch (error) {
+    console.error('[OpenClaw] ❌ Failed to initialize services:', error);
+  }
+}
+
+// Set up event listeners for real-time broadcast
+function setupEventListeners() {
+  // Gateway events
+  gatewayService.on('agent:connected', (data) => {
+    console.log(`[OpenClaw] Agent connected: ${data.agentId}`);
+    fastify.websocketBroadcast.send('agent:connected', data);
+  });
+  
+  gatewayService.on('agent:disconnected', (data) => {
+    console.log(`[OpenClaw] Agent disconnected: ${data.agentId}`);
+    fastify.websocketBroadcast.send('agent:disconnected', data);
+  });
+  
+  gatewayService.on('agent:error', (data) => {
+    console.log(`[OpenClaw] Agent error: ${data.agentId}`);
+    fastify.websocketBroadcast.send('agent:error', data);
+  });
+  
+  gatewayService.on('agent:notification', (data) => {
+    console.log(`[OpenClaw] Agent notification: ${data.agentId} - ${data.method}`);
+    fastify.websocketBroadcast.send('agent:notification', data);
+  });
+  
+  // Task events
+  taskService.on('task:output', (data) => {
+    fastify.websocketBroadcast.send('agent:output', data);
+  });
+  
+  // Status events
+  statusSyncService.on('agent:status', (data) => {
+    fastify.websocketBroadcast.send('agent:status', data);
   });
 }
 
@@ -152,6 +235,9 @@ async function start() {
     // Initialize agents from config
     await initializeAgents();
 
+    // Initialize OpenClaw services
+    await initializeOpenClawServices();
+
     // Seed initial activities
     await seedActivities();
 
@@ -166,6 +252,15 @@ const signals = ['SIGINT', 'SIGTERM'];
 signals.forEach((signal) => {
   process.on(signal, async () => {
     fastify.log.info(`Received ${signal}, shutting down gracefully...`);
+    
+    // Shutdown OpenClaw services
+    if (gatewayService) {
+      await gatewayService.shutdown();
+    }
+    if (statusSyncService) {
+      statusSyncService.stopPeriodicSync();
+    }
+    
     await fastify.close();
     process.exit(0);
   });
