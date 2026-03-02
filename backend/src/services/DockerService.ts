@@ -93,9 +93,11 @@ export class DockerService {
     );
 
     // Create .env file for container
+    // Note: OPENCLAW_GATEWAY_PORT is NOT included because OpenClaw internally
+    // always listens on port 18789. The external port mapping is handled by Docker (-p flag).
     const envContent = `OPENCLAW_GATEWAY_TOKEN=${config.gatewayToken}
-OPENCLAW_GATEWAY_PORT=${config.port}
 OPENCLAW_AGENT_ID=${config.id}
+ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
 `;
 
     await fs.writeFile(
