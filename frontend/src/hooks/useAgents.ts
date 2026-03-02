@@ -21,7 +21,7 @@ export const useAgents = () => {
         
         // Llamada real a la API
         // El backend retorna: { ok: boolean, agents: [...] }
-        const response = await fetchAPI<{ ok: boolean; agents: any[] }>('/api/agents');
+        const response = await fetchAPI<{ ok: boolean; agents: any[] }>('/agents');
         
         // Transformar respuesta del backend al formato del frontend
         const adaptedAgents = adaptBackendAgentsResponse(response);
