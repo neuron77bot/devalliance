@@ -395,17 +395,14 @@ export class TaskService extends EventEmitter {
       // Change status to in_progress
       await this.changeStatus(taskId, 'in_progress', task.assignedTo);
 
-      // Send task to OpenClaw via RPC
+      // Send task to OpenClaw via RPC (chat.send)
       const result = await this.gatewayService.sendRPC(
         task.assignedTo,
-        'sessions.send',
+        'chat.send',
         {
           message: prompt,
-          context: {
-            taskId,
-            title: task.title,
-            priority: task.priority
-          }
+          sessionKey: 'agent:main:main', // Target main session
+          idempotencyKey: `task-${taskId}-${Date.now()}` // Unique key for deduplication
         }
       );
 
