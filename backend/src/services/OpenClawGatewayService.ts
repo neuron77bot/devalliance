@@ -7,39 +7,36 @@ export interface GatewayConnection {
   wsClient: WebSocket;
   token: string;
   url: string;
-  status: 'connected' | 'disconnected' | 'error';
+  status: 'handshaking' | 'connected' | 'disconnected' | 'error';
   lastPing?: Date;
   reconnectAttempts: number;
   sessionId?: string;
+  protocol?: number;
 }
 
-export interface RPCRequest {
-  jsonrpc: '2.0';
-  method: string;
+export interface GatewayFrame {
+  type: 'req' | 'res' | 'event';
+  id?: string | number;
+  method?: string;
   params?: any;
-  id: number;
-}
-
-export interface RPCResponse {
-  jsonrpc: '2.0';
-  result?: any;
-  error?: {
-    code: number;
-    message: string;
-    data?: any;
-  };
-  id: number;
+  ok?: boolean;
+  payload?: any;
+  error?: any;
+  event?: string;
+  seq?: number;
+  stateVersion?: string;
 }
 
 export class OpenClawGatewayService extends EventEmitter {
   private connections: Map<string, GatewayConnection> = new Map();
-  private pendingRequests: Map<number, { resolve: Function; reject: Function; timeout: NodeJS.Timeout }> = new Map();
+  private pendingRequests: Map<string, { resolve: Function; reject: Function; timeout: NodeJS.Timeout }> = new Map();
   private rpcIdCounter: number = 1;
   private heartbeatInterval?: NodeJS.Timeout;
   private readonly HEARTBEAT_INTERVAL = 30000; // 30 seconds
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
   private readonly RECONNECT_DELAY = 5000; // 5 seconds
   private readonly RPC_TIMEOUT = 30000; // 30 seconds
+  private readonly PROTOCOL_VERSION = 3;
 
   constructor() {
     super();
@@ -77,19 +74,15 @@ export class OpenClawGatewayService extends EventEmitter {
 
       console.log(`[OpenClaw] Connecting to agent ${agentId} at ${url}...`);
 
-      // Create WebSocket connection with authorization header
-      const ws = new WebSocket(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // Create WebSocket connection WITHOUT auth header (protocol doesn't use it)
+      const ws = new WebSocket(url);
 
       const connection: GatewayConnection = {
         agentId,
         wsClient: ws,
         token,
         url,
-        status: 'disconnected',
+        status: 'handshaking',
         reconnectAttempts: 0
       };
 
@@ -130,7 +123,7 @@ export class OpenClawGatewayService extends EventEmitter {
   }
 
   /**
-   * Send RPC request to agent's gateway
+   * Send RPC request to agent's gateway using Gateway Protocol
    */
   async sendRPC(agentId: string, method: string, params?: any): Promise<any> {
     const connection = this.connections.get(agentId);
@@ -143,12 +136,12 @@ export class OpenClawGatewayService extends EventEmitter {
       throw new Error(`Agent ${agentId} gateway is not ready (status: ${connection.status})`);
     }
 
-    const id = this.rpcIdCounter++;
-    const request: RPCRequest = {
-      jsonrpc: '2.0',
+    const id = `rpc-${this.rpcIdCounter++}-${Date.now()}`;
+    const request: GatewayFrame = {
+      type: 'req',
+      id,
       method,
-      params,
-      id
+      params: params || {}
     };
 
     return new Promise((resolve, reject) => {
@@ -183,7 +176,7 @@ export class OpenClawGatewayService extends EventEmitter {
         return false;
       }
 
-      // Try a simple ping RPC
+      // Try a simple status check
       await this.sendRPC(agentId, 'gateway.status', {});
       return true;
     } catch (error) {
@@ -197,7 +190,7 @@ export class OpenClawGatewayService extends EventEmitter {
    */
   async getAgentInfo(agentId: string): Promise<any> {
     try {
-      const result = await this.sendRPC(agentId, 'gateway.info', {});
+      const result = await this.sendRPC(agentId, 'agent.info', {});
       return result;
     } catch (error: any) {
       console.error(`[OpenClaw] Failed to get info for ${agentId}:`, error.message);
@@ -208,7 +201,7 @@ export class OpenClawGatewayService extends EventEmitter {
   /**
    * Get connection status for an agent
    */
-  getConnectionStatus(agentId: string): 'connected' | 'disconnected' | 'error' | 'unknown' {
+  getConnectionStatus(agentId: string): 'connected' | 'handshaking' | 'disconnected' | 'error' | 'unknown' {
     const connection = this.connections.get(agentId);
     return connection ? connection.status : 'unknown';
   }
@@ -264,60 +257,166 @@ export class OpenClawGatewayService extends EventEmitter {
     const connection = this.connections.get(agentId);
     if (!connection) return;
 
-    console.log(`[OpenClaw] ✅ Agent ${agentId} connected`);
-    connection.status = 'connected';
-    connection.reconnectAttempts = 0;
-    connection.lastPing = new Date();
-
-    this.emit('agent:connected', { agentId });
+    console.log(`[OpenClaw] WebSocket opened for ${agentId}, waiting for challenge...`);
+    // Don't mark as connected yet - wait for challenge + hello-ok
   }
 
   private handleMessage(agentId: string, data: WebSocket.RawData): void {
     try {
-      const message = JSON.parse(data.toString());
-      
+      const message: GatewayFrame = JSON.parse(data.toString());
+      const connection = this.connections.get(agentId);
+      if (!connection) return;
+
+      // Handle challenge event (first message after connect)
+      if (message.type === 'event' && message.event === 'connect.challenge') {
+        console.log(`[OpenClaw] Challenge payload for ${agentId}:`, JSON.stringify(message.payload));
+        this.handleChallenge(agentId, message.payload);
+        return;
+      }
+
+      // Handle hello-ok response (handshake complete)
+      if (message.type === 'res' && message.payload?.type === 'hello-ok') {
+        this.handleHelloOk(agentId, message);
+        return;
+      }
+
       // Handle RPC response
-      if (message.jsonrpc === '2.0' && message.id !== undefined) {
+      if (message.type === 'res' && message.id !== undefined) {
         this.handleRPCResponse(agentId, message);
+        return;
       }
-      // Handle notification (no id)
-      else if (message.jsonrpc === '2.0' && message.method) {
-        this.handleNotification(agentId, message);
+
+      // Handle events (notifications)
+      if (message.type === 'event') {
+        this.handleEvent(agentId, message);
+        return;
       }
-      // Handle other messages
-      else {
-        console.log(`[OpenClaw] Message from ${agentId}:`, message);
-        this.emit('agent:message', { agentId, message });
-      }
+
+      // Log unknown messages
+      console.log(`[OpenClaw] Message from ${agentId}:`, message);
+      this.emit('agent:message', { agentId, message });
+
     } catch (error) {
       console.error(`[OpenClaw] Failed to parse message from ${agentId}:`, error);
     }
   }
 
-  private handleRPCResponse(agentId: string, response: RPCResponse): void {
-    const pending = this.pendingRequests.get(response.id);
+  private handleChallenge(agentId: string, _payload: any): void {
+    const connection = this.connections.get(agentId);
+    if (!connection) return;
+
+    console.log(`[OpenClaw] Received challenge from ${agentId}, sending connect request...`);
+
+    const requestId = `connect-${agentId}-${Date.now()}`;
+    const connectRequest: GatewayFrame = {
+      type: 'req',
+      id: requestId,
+      method: 'connect',
+      params: {
+        minProtocol: this.PROTOCOL_VERSION,
+        maxProtocol: this.PROTOCOL_VERSION,
+        client: {
+          id: 'cli',
+          version: '2.0.0',
+          platform: 'linux',
+          mode: 'cli'
+        },
+        role: 'operator',
+        scopes: ['operator.read', 'operator.write'],
+        caps: [],
+        commands: [],
+        permissions: {},
+        auth: {
+          token: connection.token
+        },
+        locale: 'es-AR',
+        userAgent: 'DevAlliance-MissionControl/2.0.0'
+      }
+    };
+
+    // Create promise for hello-ok response (though we handle it differently)
+    // Store in pending requests so we can track it
+    const timeout = setTimeout(() => {
+      this.pendingRequests.delete(requestId);
+      console.warn(`[OpenClaw] Connect handshake timeout for ${agentId}`);
+      connection.status = 'error';
+    }, this.RPC_TIMEOUT);
+
+    this.pendingRequests.set(requestId, {
+      resolve: () => {}, // Will be handled by handleHelloOk
+      reject: () => {},
+      timeout
+    });
+
+    try {
+      const payload = JSON.stringify(connectRequest);
+      console.log(`[OpenClaw] Sending connect request for ${agentId}:`, payload.slice(0, 200));
+      connection.wsClient.send(payload);
+    } catch (error: any) {
+      clearTimeout(timeout);
+      this.pendingRequests.delete(requestId);
+      console.error(`[OpenClaw] Failed to send connect request for ${agentId}:`, error.message);
+      connection.status = 'error';
+      this.emit('agent:error', { agentId, error });
+    }
+  }
+
+  private handleHelloOk(agentId: string, message: GatewayFrame): void {
+    const connection = this.connections.get(agentId);
+    if (!connection) return;
+
+    // Clean up pending connect request
+    const requestId = String(message.id);
+    const pending = this.pendingRequests.get(requestId);
+    if (pending) {
+      clearTimeout(pending.timeout);
+      this.pendingRequests.delete(requestId);
+    }
+
+    console.log(`[OpenClaw] ✅ Agent ${agentId} connected (protocol v${message.payload.protocol})`);
+    
+    connection.status = 'connected';
+    connection.protocol = message.payload.protocol;
+    connection.reconnectAttempts = 0;
+    connection.lastPing = new Date();
+
+    // Store device token if provided
+    if (message.payload.auth?.deviceToken) {
+      // Could store this for future use
+      console.log(`[OpenClaw] Received device token for ${agentId}`);
+    }
+
+    this.emit('agent:connected', { agentId, protocol: connection.protocol });
+  }
+
+  private handleRPCResponse(agentId: string, response: GatewayFrame): void {
+    const requestId = String(response.id);
+    const pending = this.pendingRequests.get(requestId);
     if (!pending) {
       console.warn(`[OpenClaw] Received response for unknown request ID ${response.id}`);
       return;
     }
 
     clearTimeout(pending.timeout);
-    this.pendingRequests.delete(response.id);
+    this.pendingRequests.delete(requestId);
 
-    if (response.error) {
-      console.error(`[OpenClaw] RPC error from ${agentId}:`, response.error);
-      pending.reject(new Error(response.error.message));
+    if (!response.ok || response.error) {
+      const errorMsg = response.error?.message || response.error || 'Unknown error';
+      console.error(`[OpenClaw] RPC error from ${agentId}:`, errorMsg);
+      pending.reject(new Error(errorMsg));
     } else {
-      pending.resolve(response.result);
+      pending.resolve(response.payload);
     }
   }
 
-  private handleNotification(agentId: string, notification: any): void {
-    console.log(`[OpenClaw] Notification from ${agentId}:`, notification.method);
-    this.emit('agent:notification', {
+  private handleEvent(agentId: string, event: GatewayFrame): void {
+    console.log(`[OpenClaw] Event from ${agentId}: ${event.event}`);
+    this.emit('agent:event', {
       agentId,
-      method: notification.method,
-      params: notification.params
+      event: event.event,
+      payload: event.payload,
+      seq: event.seq,
+      stateVersion: event.stateVersion
     });
   }
 

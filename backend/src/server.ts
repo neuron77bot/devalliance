@@ -219,7 +219,13 @@ async function start() {
     // Register plugins
     await registerPlugins();
 
-    // Register routes
+    // Initialize agents from config FIRST
+    await initializeAgents();
+
+    // Initialize OpenClaw services BEFORE registering routes
+    await initializeOpenClawServices();
+
+    // Register routes (including gateway routes that need services)
     await registerRoutes();
 
     // Start server
@@ -231,12 +237,6 @@ async function start() {
     fastify.log.info(`🔌 API: http://${HOST}:${PORT}/api`);
     fastify.log.info(`🌍 Environment: ${NODE_ENV}`);
     fastify.log.info(`🗄️  MongoDB: ${MONGODB_URI}`);
-
-    // Initialize agents from config
-    await initializeAgents();
-
-    // Initialize OpenClaw services
-    await initializeOpenClawServices();
 
     // Seed initial activities
     await seedActivities();
