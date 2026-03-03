@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit, Trash2, Play, Square, RotateCw, AlertCircle, LayoutGrid, List, MessageCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Play, Square, RotateCw, AlertCircle, LayoutGrid, List, MessageCircle, Terminal } from 'lucide-react';
 import { useAgents } from '../hooks/useAgents';
 import { useAgentActions, type CreateAgentData, type UpdateAgentData } from '../hooks/useAgentActions';
 import { CreateEditModal } from '../components/AgentManagement/CreateEditModal';
 import { DeleteConfirmModal } from '../components/AgentManagement/DeleteConfirmModal';
 import { ChatModal } from '../components/AgentManagement/ChatModal';
+import { TUIModal } from '../components/AgentManagement/TUIModal';
 import type { Agent } from '../types/api';
 
 type ViewMode = 'grid' | 'list';
@@ -26,8 +27,10 @@ export const AgentsPage = () => {
   const [showCreateEditModal, setShowCreateEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [showTUIModal, setShowTUIModal] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [chatAgent, setChatAgent] = useState<Agent | null>(null);
+  const [tuiAgent, setTuiAgent] = useState<Agent | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -149,6 +152,12 @@ export const AgentsPage = () => {
   const handleOpenChat = (agent: Agent) => {
     setChatAgent(agent);
     setShowChatModal(true);
+  };
+
+  // Open TUI modal
+  const handleOpenTUI = (agent: Agent) => {
+    setTuiAgent(agent);
+    setShowTUIModal(true);
   };
 
   // Get status badge color
@@ -361,6 +370,17 @@ export const AgentsPage = () => {
                   <MessageCircle size={18} />
                 </button>
 
+                {/* TUI button - only show for healthy agents */}
+                {agent.status === 'healthy' && (
+                  <button
+                    onClick={() => handleOpenTUI(agent)}
+                    className="p-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded transition-colors"
+                    title="Open Terminal"
+                  >
+                    <Terminal size={18} />
+                  </button>
+                )}
+
                 {/* Edit and Delete buttons */}
                 <button
                   onClick={() => openEditModal(agent)}
@@ -445,6 +465,15 @@ export const AgentsPage = () => {
                         >
                           <MessageCircle size={16} />
                         </button>
+                        {agent.status === 'healthy' && (
+                          <button
+                            onClick={() => handleOpenTUI(agent)}
+                            className="p-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded transition-colors"
+                            title="Open Terminal"
+                          >
+                            <Terminal size={16} />
+                          </button>
+                        )}
                         <button
                           onClick={() => openEditModal(agent)}
                           className="p-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded transition-colors"
@@ -505,6 +534,19 @@ export const AgentsPage = () => {
           onClose={() => {
             setShowChatModal(false);
             setChatAgent(null);
+          }}
+        />
+      )}
+
+      {/* TUI Modal */}
+      {tuiAgent && (
+        <TUIModal
+          isOpen={showTUIModal}
+          agentId={tuiAgent.id}
+          agentName={tuiAgent.name}
+          onClose={() => {
+            setShowTUIModal(false);
+            setTuiAgent(null);
           }}
         />
       )}
