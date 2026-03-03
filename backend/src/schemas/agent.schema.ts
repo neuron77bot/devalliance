@@ -98,11 +98,35 @@ export const ContainerOperationResponseSchema = Type.Object({
   error: Type.Optional(Type.String())
 });
 
+// Schema for chat request
+export const ChatRequestSchema = Type.Object({
+  message: Type.String({ minLength: 1 }),
+  sessionKey: Type.Optional(Type.String()),
+  deliver: Type.Optional(Type.Boolean()),
+  thinking: Type.Optional(Type.Union([
+    Type.Literal('low'),
+    Type.Literal('medium'),
+    Type.Literal('high')
+  ])),
+  timeoutSeconds: Type.Optional(Type.Number({ minimum: 10, maximum: 600 }))
+});
+
+// Schema for chat response
+export const ChatResponseSchema = Type.Object({
+  ok: Type.Boolean(),
+  reply: Type.Optional(Type.String()),
+  sessionKey: Type.Optional(Type.String()),
+  messageId: Type.Optional(Type.String()),
+  error: Type.Optional(Type.String())
+});
+
 export type Agent = Static<typeof AgentSchema>;
 export type Gateway = Static<typeof GatewaySchema>;
 export type RpcCallBody = Static<typeof RpcCallBodySchema>;
 export type CreateAgent = Static<typeof CreateAgentSchema>;
 export type UpdateAgent = Static<typeof UpdateAgentSchema>;
+export type ChatRequest = Static<typeof ChatRequestSchema>;
+export type ChatResponse = Static<typeof ChatResponseSchema>;
 
 /**
  * Validate Telegram configuration

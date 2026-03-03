@@ -102,7 +102,11 @@ async function registerRoutes() {
 
   // API routes (with /api prefix)
   await fastify.register(async (instance) => {
-    await instance.register(agentRoutes, { prefix: '/api' });
+    // Agent routes (with OpenClaw gateway support)
+    await instance.register(async (agentInstance) => {
+      await agentRoutes(agentInstance, { openclawGatewayService: gatewayService });
+    }, { prefix: '/api' });
+    
     await instance.register(statusRoutes, { prefix: '/api' });
     await instance.register(taskRoutes, { prefix: '/api' });
     await instance.register(metricsRoutes, { prefix: '/api' });

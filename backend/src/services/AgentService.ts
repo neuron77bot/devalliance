@@ -1,15 +1,18 @@
 import { AgentModel, IAgent } from '../models/Agent.model';
-import { Agent, CreateAgent, UpdateAgent, validateTelegramConfig } from '../schemas/agent.schema';
+import { Agent, CreateAgent, UpdateAgent, validateTelegramConfig, ChatRequest, ChatResponse } from '../schemas/agent.schema';
 import { GatewayService } from './GatewayService';
 import { DockerService } from './DockerService';
+import { OpenClawGatewayService } from './OpenClawGatewayService';
 
 export class AgentService {
   private gatewayService: GatewayService;
   private dockerService: DockerService;
+  private openclawGatewayService?: OpenClawGatewayService;
 
-  constructor() {
+  constructor(openclawGatewayService?: OpenClawGatewayService) {
     this.gatewayService = new GatewayService();
     this.dockerService = new DockerService();
+    this.openclawGatewayService = openclawGatewayService;
   }
 
   /**
@@ -324,6 +327,67 @@ export class AgentService {
     };
 
     return await this.gatewayService.callGateway(agentObj, method, params);
+  }
+
+  /**
+   * Send chat message to agent and get response
+   */
+  async chatWithAgent(id: string, request: ChatRequest): Promise<ChatResponse> {
+    try {
+      // Check if OpenClawGatewayService is available
+      if (!this.openclawGatewayService) {
+        return {
+          ok: false,
+          error: 'OpenClawGatewayService not available. Agent chat requires proper gateway connection.'
+        };
+      }
+
+      // Verify agent exists
+      const agent = await this.getAgentById(id);
+      if (!agent) {
+        return {
+          ok: false,
+          error: `Agent '${id}' not found`
+        };
+      }
+
+      // Check if agent is connected
+      const connectionStatus = this.openclawGatewayService.getConnectionStatus(id);
+      if (connectionStatus !== 'connected') {
+        return {
+          ok: false,
+          error: `Agent '${id}' is not connected (status: ${connectionStatus})`
+        };
+      }
+
+      // Send chat message and wait for response
+      console.log(`[AgentService] Sending chat message to ${id}:`, request.message.slice(0, 100));
+      
+      const result = await this.openclawGatewayService.sendChatMessage(
+        id,
+        request.message,
+        {
+          sessionKey: request.sessionKey,
+          deliver: request.deliver,
+          thinking: request.thinking,
+          timeoutSeconds: request.timeoutSeconds
+        }
+      );
+
+      return {
+        ok: true,
+        reply: result.reply,
+        sessionKey: result.sessionKey,
+        messageId: result.messageId
+      };
+
+    } catch (error: any) {
+      console.error(`[AgentService] Chat error for agent ${id}:`, error);
+      return {
+        ok: false,
+        error: error.message || 'Unknown error occurred'
+      };
+    }
   }
 
   /**

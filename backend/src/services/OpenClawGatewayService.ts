@@ -216,6 +216,135 @@ export class OpenClawGatewayService extends EventEmitter {
   }
 
   /**
+   * Send chat message to agent and wait for response
+   */
+  async sendChatMessage(
+    agentId: string,
+    message: string,
+    options?: {
+      sessionKey?: string;
+      deliver?: boolean;
+      thinking?: string;
+      timeoutSeconds?: number;
+    }
+  ): Promise<{
+    reply?: string;
+    sessionKey?: string;
+    messageId?: string;
+  }> {
+    const connection = this.connections.get(agentId);
+    
+    if (!connection) {
+      throw new Error(`Agent ${agentId} is not connected`);
+    }
+
+    if (connection.status !== 'connected') {
+      throw new Error(`Agent ${agentId} gateway is not ready (status: ${connection.status})`);
+    }
+
+    const timeoutMs = (options?.timeoutSeconds || 300) * 1000;
+    const requestId = `chat-${this.rpcIdCounter++}-${Date.now()}`;
+
+    // Build chat.send params according to OpenClaw protocol
+    const params: any = {
+      sessionKey: options?.sessionKey || `api-${Date.now()}`,
+      idempotencyKey: `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      message
+    };
+
+    if (options?.deliver !== undefined) {
+      params.deliver = options.deliver;
+    }
+
+    if (options?.thinking) {
+      params.thinking = options.thinking;
+    }
+
+    const request: GatewayFrame = {
+      type: 'req',
+      id: requestId,
+      method: 'chat.send',
+      params
+    };
+
+    return new Promise((resolve, reject) => {
+      // Listen for chat reply events (register BEFORE sending request)
+      const eventHandler = (eventData: any) => {
+        console.log(`[OpenClaw] Event handler called for ${agentId}, event: ${eventData.event}, requestId: ${requestId}`);
+        
+        if (eventData.agentId !== agentId) return;
+
+        // Look for chat events
+        if (eventData.event === 'chat') {
+          const payload = eventData.payload;
+          
+          console.log(`[OpenClaw] Chat event for request ${requestId}:`, JSON.stringify(payload, null, 2));
+          
+          // Check state
+          if (payload?.state === 'error') {
+            // Handle error
+            clearTimeout(timeout);
+            this.removeListener('agent:event', eventHandler);
+            this.pendingRequests.delete(requestId);
+            
+            reject(new Error(payload.errorMessage || 'Chat error'));
+            return;
+          }
+          
+          if (payload?.state === 'complete' || payload?.state === 'done') {
+            // Extract reply text
+            let reply: string | undefined;
+            if (payload?.content) {
+              reply = payload.content;
+            } else if (payload?.text) {
+              reply = payload.text;
+            } else if (payload?.response) {
+              reply = payload.response;
+            } else if (payload?.message) {
+              reply = payload.message;
+            }
+
+            if (reply) {
+              clearTimeout(timeout);
+              this.removeListener('agent:event', eventHandler);
+              this.pendingRequests.delete(requestId);
+              
+              resolve({
+                reply,
+                sessionKey: payload?.sessionKey,
+                messageId: payload?.runId || payload?.messageId || payload?.id
+              });
+            }
+          }
+        }
+      };
+
+      // Register event listener FIRST
+      this.on('agent:event', eventHandler);
+
+      // Set timeout AFTER registering listener
+      const timeout = setTimeout(() => {
+        this.removeListener('agent:event', eventHandler);
+        reject(new Error(`Chat timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      // DO NOT store in pendingRequests - we'll handle the response via events only
+      // The RPC response comes immediately but the actual chat completion comes via events
+
+      // Send request LAST
+      try {
+        connection.wsClient.send(JSON.stringify(request));
+        console.log(`[OpenClaw] Chat message sent to ${agentId}:`, message.slice(0, 100));
+      } catch (error: any) {
+        clearTimeout(timeout);
+        this.removeListener('agent:event', eventHandler);
+        this.pendingRequests.delete(requestId);
+        reject(new Error(`Failed to send chat message: ${error.message}`));
+      }
+    });
+  }
+
+  /**
    * Initialize connections for all agents in database
    */
   async initializeAllAgents(): Promise<void> {
@@ -411,6 +540,12 @@ export class OpenClawGatewayService extends EventEmitter {
 
   private handleEvent(agentId: string, event: GatewayFrame): void {
     console.log(`[OpenClaw] Event from ${agentId}: ${event.event}`);
+    
+    // Log chat events with full payload for debugging
+    if (event.event === 'chat') {
+      console.log(`[OpenClaw] Chat event payload for ${agentId}:`, JSON.stringify(event.payload, null, 2));
+    }
+    
     this.emit('agent:event', {
       agentId,
       event: event.event,

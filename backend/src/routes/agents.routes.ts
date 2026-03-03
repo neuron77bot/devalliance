@@ -10,12 +10,18 @@ import {
   CreateAgentResponseSchema,
   UpdateAgentResponseSchema,
   DeleteAgentResponseSchema,
-  ContainerOperationResponseSchema
+  ContainerOperationResponseSchema,
+  ChatRequestSchema,
+  ChatResponseSchema
 } from '../schemas/agent.schema';
 import { ErrorResponseSchema } from '../schemas/common.schema';
+import { OpenClawGatewayService } from '../services/OpenClawGatewayService';
 
-export default async function agentRoutes(fastify: FastifyInstance) {
-  const agentService = new AgentService();
+export default async function agentRoutes(
+  fastify: FastifyInstance,
+  options?: { openclawGatewayService?: OpenClawGatewayService }
+) {
+  const agentService = new AgentService(options?.openclawGatewayService);
 
   // GET /api/agents - List all agents
   fastify.get(
@@ -372,6 +378,64 @@ export default async function agentRoutes(fastify: FastifyInstance) {
         };
       } catch (error) {
         fastify.log.error(error);
+        return reply.status(500).send({
+          ok: false,
+          error: (error as Error).message
+        });
+      }
+    }
+  );
+
+  // POST /api/agents/:id/chat - Send chat message and get response
+  fastify.post<{
+    Params: { id: string };
+    Body: {
+      message: string;
+      sessionKey?: string;
+      deliver?: boolean;
+      thinking?: 'low' | 'medium' | 'high';
+      timeoutSeconds?: number;
+    };
+  }>(
+    '/agents/:id/chat',
+    {
+      schema: {
+        tags: ['Agents'],
+        description: 'Send chat message to agent and receive response',
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Agent ID (e.g., "luna", "sol", "mati")' }
+          },
+          required: ['id']
+        },
+        body: ChatRequestSchema,
+        response: {
+          200: ChatResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const chatRequest = request.body;
+
+        fastify.log.info(`[Chat] Request for agent ${id}: ${chatRequest.message.slice(0, 100)}`);
+
+        const response = await agentService.chatWithAgent(id, chatRequest);
+
+        if (!response.ok) {
+          const statusCode = response.error?.includes('not found') ? 404 : 
+                           response.error?.includes('not connected') ? 503 : 400;
+          return reply.status(statusCode).send(response);
+        }
+
+        return response;
+
+      } catch (error) {
+        fastify.log.error(error, '[Chat] Error');
         return reply.status(500).send({
           ok: false,
           error: (error as Error).message
