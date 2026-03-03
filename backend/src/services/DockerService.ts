@@ -90,6 +90,16 @@ export class DockerService {
     await fs.mkdir(path.join(openclawDir, 'canvas'), { recursive: true });
     await fs.mkdir(path.join(openclawDir, 'cron'), { recursive: true });
 
+    // Copy TOOLS.md template to workspace
+    const toolsTemplatePath = '/var/www/devalliance/openclaw-containers/workspace/TOOLS.md';
+    const toolsDestPath = path.join(openclawDir, 'workspace', 'TOOLS.md');
+    try {
+      await fs.copyFile(toolsTemplatePath, toolsDestPath);
+    } catch (error) {
+      console.warn(`Warning: Could not copy TOOLS.md template:`, error);
+      // Don't throw - workspace files are optional
+    }
+
     // Create config.json
     const configData = {
       agentId: config.id,
