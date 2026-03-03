@@ -78,6 +78,19 @@ export const AssignTaskSchema = Type.Object({
   agentId: Type.String()
 });
 
+export const CallbackStatusEnum = Type.Union([
+  Type.Literal('started'),
+  Type.Literal('completed'),
+  Type.Literal('failed')
+]);
+
+export const TaskCallbackSchema = Type.Object({
+  status: CallbackStatusEnum,
+  result: Type.Optional(Type.String()),
+  error: Type.Optional(Type.String()),
+  timestamp: Type.Optional(Type.String())
+});
+
 export type CreateTaskInput = Static<typeof CreateTaskSchema>;
 export type UpdateTaskInput = Static<typeof UpdateTaskSchema>;
 export type TaskFilterInput = Static<typeof TaskFilterSchema>;
@@ -85,3 +98,4 @@ export type HandoffRequestInput = Static<typeof HandoffRequestSchema>;
 export type CommentInput = Static<typeof CommentSchema>;
 export type StatusChangeInput = Static<typeof StatusChangeSchema>;
 export type AssignTaskInput = Static<typeof AssignTaskSchema>;
+export type TaskCallbackInput = Static<typeof TaskCallbackSchema>;

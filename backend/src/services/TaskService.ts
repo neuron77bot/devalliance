@@ -500,6 +500,72 @@ export class TaskService extends EventEmitter {
   }
 
   /**
+   * Handle callback from agent skill (devalliance-notify)
+   */
+  async handleCallback(
+    taskId: string,
+    agentToken: string,
+    callbackStatus: 'started' | 'completed' | 'failed',
+    result?: string,
+    error?: string
+  ): Promise<any | null> {
+    // Get task
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    // Validate agent token matches assigned agent
+    if (task.assignedTo !== agentToken) {
+      throw new Error(
+        `Agent token mismatch. Task assigned to: ${task.assignedTo}, callback from: ${agentToken}`
+      );
+    }
+
+    // Map callback status to task status
+    let newTaskStatus: TaskStatus;
+    switch (callbackStatus) {
+      case 'started':
+        newTaskStatus = 'in_progress';
+        break;
+      case 'completed':
+        newTaskStatus = 'completed';
+        break;
+      case 'failed':
+        newTaskStatus = 'failed';
+        break;
+      default:
+        throw new Error(`Invalid callback status: ${callbackStatus}`);
+    }
+
+    // Change status
+    const updatedTask = await this.changeStatus(taskId, newTaskStatus, agentToken);
+    if (!updatedTask) {
+      throw new Error('Failed to update task status');
+    }
+
+    // Add comment with result/error
+    if (result && callbackStatus === 'completed') {
+      await this.addComment(taskId, agentToken, `✅ Task completed: ${result}`);
+    } else if (error && callbackStatus === 'failed') {
+      await this.addComment(taskId, agentToken, `❌ Task failed: ${error}`);
+    } else if (callbackStatus === 'started') {
+      await this.addComment(taskId, agentToken, `⏳ Task execution started`);
+    }
+
+    // Log to AgentOutput
+    await this.logOutput(
+      agentToken,
+      taskId,
+      callbackStatus === 'completed' ? 'result' : callbackStatus === 'failed' ? 'error' : 'progress',
+      result || error || 'Task started',
+      { callbackStatus, timestamp: new Date().toISOString() }
+    );
+
+    return updatedTask;
+  }
+
+  /**
    * Build task prompt for OpenClaw
    */
   private buildTaskPrompt(task: ITask): string {

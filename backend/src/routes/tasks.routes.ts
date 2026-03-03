@@ -10,13 +10,15 @@ import {
   CommentSchema,
   StatusChangeSchema,
   AssignTaskSchema,
+  TaskCallbackSchema,
   CreateTaskInput,
   UpdateTaskInput,
   TaskFilterInput,
   HandoffRequestInput,
   CommentInput,
   StatusChangeInput,
-  AssignTaskInput
+  AssignTaskInput,
+  TaskCallbackInput
 } from '../schemas/task.schema';
 
 export default async function taskRoutes(fastify: FastifyInstance) {
@@ -340,6 +342,60 @@ export default async function taskRoutes(fastify: FastifyInstance) {
         return reply.code(201).send(interaction);
       } catch (error: any) {
         return reply.code(500).send({ error: error.message });
+      }
+    }
+  );
+
+  // Task callback from agent (skill notification)
+  fastify.post<{ Params: { id: string }; Body: TaskCallbackInput }>(
+    '/tasks/:id/callback',
+    {
+      schema: {
+        body: TaskCallbackSchema
+      }
+    },
+    async (request, reply) => {
+      try {
+        // Validate agent token
+        const agentToken = request.headers['x-agent-token'] as string;
+        if (!agentToken) {
+          return reply.code(401).send({ error: 'Missing agent token' });
+        }
+
+        const { status, result, error } = request.body;
+        
+        // Handle callback
+        const task = await taskService.handleCallback(
+          request.params.id,
+          agentToken,
+          status,
+          result,
+          error
+        );
+
+        if (!task) {
+          return reply.code(404).send({ error: 'Task not found' });
+        }
+
+        // Broadcast WebSocket event
+        fastify.websocketBroadcast.clients.forEach((client: any) => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({
+              type: 'task_callback',
+              task,
+              callback: { status, result, error },
+              timestamp: new Date().toISOString()
+            }));
+          }
+        });
+
+        return reply.send({ 
+          success: true, 
+          taskId: request.params.id,
+          newStatus: task.status 
+        });
+      } catch (error: any) {
+        return reply.code(400).send({ error: error.message });
       }
     }
   );
