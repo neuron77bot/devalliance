@@ -247,6 +247,23 @@ export function useTaskActions() {
     }
   };
 
+  const executeTask = async (taskId: string) => {
+    setSubmitting(true);
+    setError(null);
+    
+    try {
+      const result = await fetchAPI<{ success: boolean; taskId: string; message: string; result: any }>(`/tasks/${taskId}/execute`, {
+        method: 'POST'
+      });
+      return result;
+    } catch (err) {
+      setError(err as Error);
+      throw err;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return { 
     createTask, 
     updateTask, 
@@ -256,6 +273,7 @@ export function useTaskActions() {
     handoffTask,
     acceptHandoff,
     addComment,
+    executeTask,
     submitting, 
     error 
   };

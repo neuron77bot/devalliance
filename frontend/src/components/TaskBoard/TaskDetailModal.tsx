@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Clock, User, Tag, Calendar, ArrowRightLeft, Trash2 } from 'lucide-react';
+import { X, Clock, User, Tag, Calendar, ArrowRightLeft, Trash2, Play, CheckCircle } from 'lucide-react';
 import { useTaskActions } from '../../hooks/useTasks';
 import { useTaskWorkflow } from '../../hooks/useTaskWorkflow';
 import { useAgents } from '../../hooks/useAgents';
@@ -14,7 +14,7 @@ interface TaskDetailModalProps {
 }
 
 export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
-  const { changeStatus, assignTask, handoffTask, deleteTask, submitting } = useTaskActions();
+  const { changeStatus, assignTask, handoffTask, deleteTask, executeTask, submitting } = useTaskActions();
   const { agents } = useAgents();
   const { 
     getStatusLabel, 
@@ -26,6 +26,34 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
 
   const [showHandoffForm, setShowHandoffForm] = useState(false);
   const [handoffData, setHandoffData] = useState<HandoffRequest>({ toAgent: '', message: '' });
+  const [executing, setExecuting] = useState(false);
+  const [executeSuccess, setExecuteSuccess] = useState(false);
+
+  const handleExecute = async () => {
+    if (!task.assignedTo) {
+      alert('Task must be assigned to an agent before execution');
+      return;
+    }
+
+    try {
+      setExecuting(true);
+      setExecuteSuccess(false);
+      
+      const result = await executeTask(task._id);
+      console.log('Task execution started:', result);
+      
+      setExecuteSuccess(true);
+      setTimeout(() => setExecuteSuccess(false), 3000);
+      
+      // Refresh task data to show updated status
+      setTimeout(() => onUpdate(), 1000);
+    } catch (err) {
+      console.error('Error executing task:', err);
+      alert('Failed to execute task. Check console for details.');
+    } finally {
+      setExecuting(false);
+    }
+  };
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
     try {
@@ -235,6 +263,43 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
                   ))}
                 </select>
               </div>
+
+              {/* Execute Task */}
+              {task.assignedTo && task.status === 'assigned' && (
+                <div>
+                  <button
+                    onClick={handleExecute}
+                    disabled={executing || submitting}
+                    className={`w-full px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 font-medium
+                      ${executeSuccess 
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                        : 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/30'
+                      }
+                      ${executing ? 'opacity-50 cursor-not-allowed' : ''}
+                    `}
+                  >
+                    {executing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-cyan-400 border-t-transparent" />
+                        Dispatching to agent...
+                      </>
+                    ) : executeSuccess ? (
+                      <>
+                        <CheckCircle size={16} />
+                        Task dispatched!
+                      </>
+                    ) : (
+                      <>
+                        <Play size={16} />
+                        Execute Task
+                      </>
+                    )}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1 text-center">
+                    Agent will receive task and notify progress via callbacks
+                  </p>
+                </div>
+              )}
 
               {/* Handoff */}
               <div>
