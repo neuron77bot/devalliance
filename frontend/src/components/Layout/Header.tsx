@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, Settings, ListTodo } from 'lucide-react';
+import { Home, Users, ListTodo } from 'lucide-react';
 
 interface HeaderProps {
   systemStatus?: 'operational' | 'degraded' | 'down';
@@ -76,17 +76,6 @@ export const Header = ({ systemStatus = 'operational' }: HeaderProps) => {
             >
               <ListTodo size={18} />
               <span className="text-sm font-medium">Tasks</span>
-            </Link>
-            <Link
-              to="/agents/manage"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                isActive('/agents/manage')
-                  ? 'bg-cyan-600 text-white'
-                  : 'text-gray-300 hover:bg-navy-800'
-              }`}
-            >
-              <Settings size={18} />
-              <span className="text-sm font-medium">Manage</span>
             </Link>
           </nav>
 
