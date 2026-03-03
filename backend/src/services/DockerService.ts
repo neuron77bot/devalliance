@@ -113,7 +113,7 @@ ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
 
     // Add Telegram token if enabled
     if (config.telegram?.enabled && config.telegram?.token) {
-      envContent += `TELEGRAM_TOKEN=${config.telegram.token}\n`;
+      envContent += `TELEGRAM_BOT_TOKEN=${config.telegram.token}\n`;
     }
 
     await fs.writeFile(
