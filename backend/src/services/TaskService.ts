@@ -388,14 +388,12 @@ export class TaskService extends EventEmitter {
     // Build task prompt
     const prompt = this.buildTaskPrompt(task);
 
-    // Log output: Starting execution
-    await this.logOutput(task.assignedTo, taskId, 'output', '🚀 Starting task execution...');
+    // Log output: Dispatching task to agent
+    await this.logOutput(task.assignedTo, taskId, 'output', '📤 Dispatching task to agent...');
 
     try {
-      // Change status to in_progress
-      await this.changeStatus(taskId, 'in_progress', task.assignedTo);
-
       // Send task to OpenClaw via RPC (chat.send)
+      // Status will be updated by agent via callback (devalliance-notify skill)
       const result = await this.gatewayService.sendRPC(
         task.assignedTo,
         'chat.send',
@@ -421,11 +419,10 @@ export class TaskService extends EventEmitter {
 
     } catch (error: any) {
       // Log error
-      await this.logOutput(task.assignedTo, taskId, 'error', `❌ Execution error: ${error.message}`);
+      await this.logOutput(task.assignedTo, taskId, 'error', `❌ Dispatch error: ${error.message}`);
 
-      // Update task status to failed
-      await this.changeStatus(taskId, 'failed', task.assignedTo);
-
+      // Note: Agent should report failure via callback if task execution fails
+      // This error means dispatch failed, not task execution failed
       throw error;
     }
   }
@@ -570,14 +567,13 @@ export class TaskService extends EventEmitter {
    */
   private buildTaskPrompt(task: ITask): string {
     const lines = [
+      `TASK EXECUTION REQUEST`,
+      ``,
       `Task ID: ${task._id}`,
       `Title: ${task.title}`,
       `Description: ${task.description}`,
       `Priority: ${task.priority}`,
-      `Estimated Duration: ${task.estimatedDuration || 'N/A'} minutes`,
-      ``,
-      `Please execute this task and report back when completed.`,
-      `Include any code, files created, or actions taken.`
+      `Estimated Duration: ${task.estimatedDuration || 'N/A'} minutes`
     ];
 
     if (task.tags && task.tags.length > 0) {
@@ -588,6 +584,29 @@ export class TaskService extends EventEmitter {
       lines.push(`\nAdditional Context:`);
       lines.push(JSON.stringify(task.metadata, null, 2));
     }
+
+    lines.push('');
+    lines.push('INSTRUCTIONS:');
+    lines.push('');
+    lines.push('1. Read the devalliance-notify skill:');
+    lines.push('   read /home/node/.openclaw/workspace/skills/devalliance-notify/SKILL.md');
+    lines.push('');
+    lines.push('2. Notify task START:');
+    lines.push(`   exec ./skills/devalliance-notify/notify-task.sh ${task._id} started`);
+    lines.push('');
+    lines.push('3. Execute the task using appropriate tools (exec, write, read, etc.)');
+    lines.push('');
+    lines.push('4. Notify task RESULT:');
+    lines.push('   - If successful:');
+    lines.push(`     exec ./skills/devalliance-notify/notify-task.sh ${task._id} completed "<description of what was done>"`);
+    lines.push('   - If failed:');
+    lines.push(`     exec ./skills/devalliance-notify/notify-task.sh ${task._id} failed "" "<error message>"`);
+    lines.push('');
+    lines.push('IMPORTANT:');
+    lines.push('- Always notify START before beginning work');
+    lines.push('- Always notify RESULT (completed or failed) when done');
+    lines.push('- Include detailed descriptions in your notifications');
+    lines.push('- Report any code written, files created, or actions taken');
 
     return lines.join('\n');
   }
