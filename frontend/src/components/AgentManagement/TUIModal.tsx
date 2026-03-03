@@ -4,6 +4,7 @@ import { Terminal as TerminalIcon, X, Copy, AlertCircle } from 'lucide-react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { fetchAPI } from '../../lib/api-client';
 import '@xterm/xterm/css/xterm.css';
 
 interface TUIModalProps {
@@ -43,8 +44,7 @@ export const TUIModal = ({ isOpen, onClose, agentId, agentName }: TUIModalProps)
 
       try {
         // Fetch TUI token
-        const response = await fetch(`http://localhost:3000/api/agents/${agentId}/tui-token`);
-        const data: TUITokenResponse = await response.json();
+        const data = await fetchAPI<TUITokenResponse>(`/agents/${agentId}/tui-token`);
 
         if (!data.ok || !data.wsUrl || !data.token) {
           throw new Error(data.error || 'Failed to get TUI credentials');
