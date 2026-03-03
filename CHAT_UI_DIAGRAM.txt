@@ -1,0 +1,259 @@
+╔═════════════════════════════════════════════════════════════════════════╗
+║                          CHATMODAL COMPONENT                            ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      BACKDROP (black/70 blur-sm)                        │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │                         MODAL CONTAINER                           │  │
+│  │                    (navy-900, max-w-4xl, h-80vh)                  │  │
+│  │                                                                   │  │
+│  │  ┌─────────────────────────────────────────────────────────────┐  │  │
+│  │  │                      HEADER (navy-800)                      │  │  │
+│  │  │  ● Chat with Luna                              🗑️  ×      │  │  │
+│  │  │  AI Assistant Agent                                         │  │  │
+│  │  └─────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                   │  │
+│  │  ┌─────────────────────────────────────────────────────────────┐  │  │
+│  │  │                  MESSAGES AREA (scrollable)                 │  │  │
+│  │  │                                                             │  │  │
+│  │  │  ┌──────────────────────────────────┐                      │  │  │
+│  │  │  │ 🤖  Hola! ¿Cómo puedo ayudarte? │  (gray-700)          │  │  │
+│  │  │  │     Luna · 10:30 AM              │                      │  │  │
+│  │  │  └──────────────────────────────────┘                      │  │  │
+│  │  │                                                             │  │  │
+│  │  │                      ┌────────────────────────┐ 👤          │  │  │
+│  │  │         (blue-600)   │ Hola Luna             │             │  │  │
+│  │  │                      │ You · 10:31 AM         │             │  │  │
+│  │  │                      └────────────────────────┘             │  │  │
+│  │  │                                                             │  │  │
+│  │  │  ┌──────────────────────────────────┐                      │  │  │
+│  │  │  │ 🤖  ¿En qué puedo asistirte?    │  (gray-700)          │  │  │
+│  │  │  │     Luna · 10:31 AM              │                      │  │  │
+│  │  │  └──────────────────────────────────┘                      │  │  │
+│  │  │                                                             │  │  │
+│  │  │  ┌──────────────────────────────────┐                      │  │  │
+│  │  │  │ 🤖  ⟳ Thinking...                │  (loading state)    │  │  │
+│  │  │  └──────────────────────────────────┘                      │  │  │
+│  │  │                                                             │  │  │
+│  │  │                                                     [scroll]│  │  │
+│  │  └─────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                   │  │
+│  │  ┌─────────────────────────────────────────────────────────────┐  │  │
+│  │  │                   INPUT AREA (navy-800)                     │  │  │
+│  │  │  ┌───────────────────────────────────────┐  ┌──────────┐  │  │  │
+│  │  │  │ Type a message...                     │  │   Send   │  │  │  │
+│  │  │  │ (Enter to send, Shift+Enter for nl)   │  │    ➤    │  │  │  │
+│  │  │  └───────────────────────────────────────┘  └──────────┘  │  │  │
+│  │  │  Press Enter to send, Shift+Enter for new line            │  │  │
+│  │  └─────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                   │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                          COLOR SCHEME                                   ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+  BACKGROUND:
+    • Backdrop:         black/70 + backdrop-blur-sm
+    • Modal:            navy-900 (#0F172A)
+    • Header:           navy-800 (#1E293B)
+    • Input area:       navy-800 (#1E293B)
+    • Borders:          navy-700 (#334155)
+
+  MESSAGES:
+    • User message:     bg-blue-600 (#2563EB) + text-white
+    • Agent message:    bg-gray-700 (#374151) + text-gray-100
+    • Error message:    bg-red-500/20 + border-red-500/40 + text-red-300
+    • Loading:          indigo-400 (#818CF8)
+
+  BUTTONS:
+    • Chat button:      bg-indigo-600/20 hover:indigo-600/30 text-indigo-400
+    • Send button:      bg-cyan-500 hover:cyan-600 text-white
+    • Clear button:     text-gray-400 hover:text-red-400
+    • Close button:     text-gray-400 hover:text-white
+
+  STATUS INDICATOR:
+    • Healthy:          bg-green-500
+    • Warning:          bg-yellow-500
+    • Error:            bg-red-500
+    • Offline:          bg-gray-500
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                        COMPONENT HIERARCHY                              ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+ChatModal (249 lines)
+├── Props: { agent: Agent, onClose: () => void }
+├── State:
+│   ├── inputText: string
+│   └── (from useAgentChat hook)
+│       ├── messages: Message[]
+│       ├── isLoading: boolean
+│       └── error: string | null
+│
+├── Handlers:
+│   ├── handleSend() → sendMessage(text)
+│   ├── handleKeyDown(e) → Enter/Shift+Enter logic
+│   └── handleClearChat() → clearChat()
+│
+├── Render:
+│   ├── AnimatePresence (Framer Motion wrapper)
+│   │   ├── Backdrop (onClick → onClose)
+│   │   │   └── Modal Container (onClick.stopPropagation)
+│   │   │       ├── Header Section
+│   │   │       │   ├── Status indicator (●)
+│   │   │       │   ├── Agent name + role
+│   │   │       │   ├── Clear button (🗑️)
+│   │   │       │   └── Close button (×)
+│   │   │       │
+│   │   │       ├── Messages Area (scrollable)
+│   │   │       │   ├── Empty State (when messages.length === 0)
+│   │   │       │   ├── MessageBubble[] (mapped from messages)
+│   │   │       │   │   └── MessageBubble Component
+│   │   │       │   │       ├── Avatar (emoji)
+│   │   │       │   │       ├── Message content
+│   │   │       │   │       └── Timestamp
+│   │   │       │   ├── Loading Indicator (when isLoading)
+│   │   │       │   └── messagesEndRef (auto-scroll target)
+│   │   │       │
+│   │   │       └── Input Area
+│   │   │           ├── Textarea (value, onChange, onKeyDown)
+│   │   │           ├── Send Button (disabled when loading/empty)
+│   │   │           └── Keyboard hint text
+
+MessageBubble (inner component)
+├── Props: { message: Message, agentName: string }
+├── Render:
+│   └── Flex container (justify by role)
+│       ├── Avatar (left for agent, right for user)
+│       ├── Message bubble
+│       │   ├── Content (whitespace-pre-wrap)
+│       │   └── Timestamp (role + time)
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                         DATA FLOW                                       ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+USER ACTION: Type "Hola Luna" + Press Enter
+    ↓
+handleSend()
+    ↓
+setInputText('') + sendMessage('Hola Luna')
+    ↓
+useAgentChat.sendMessage()
+    ├── setIsLoading(true)
+    ├── Add user message to messages[]
+    ├── Call sendChatMessage(agentId, { message, sessionKey })
+    │       ↓
+    │   API: POST /api/agents/:id/chat
+    │       { message: "Hola Luna", sessionKey: "abc123" }
+    │       ↓
+    │   Response: { ok: true, reply: "¡Hola! ¿Cómo estás?", sessionKey: "abc123" }
+    │       ↓
+    ├── Update sessionKeyRef (for next message)
+    ├── Add agent response to messages[]
+    └── setIsLoading(false)
+        ↓
+    Re-render ChatModal
+        ↓
+    Auto-scroll to messagesEndRef
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                      KEYBOARD SHORTCUTS                                 ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+  Key           Action
+  ────────────  ──────────────────────────────────
+  Enter         Send message (if not empty, not loading)
+  Shift+Enter   New line in textarea
+  Escape        Close modal (future enhancement)
+  Tab           Navigate between textarea and buttons
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                      ANIMATIONS (Framer Motion)                         ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+  Element              Animation
+  ───────────────────  ──────────────────────────────────────
+  Modal backdrop       initial: opacity 0 → animate: opacity 1
+  Modal container      initial: scale 0.95, opacity 0 → scale 1, opacity 1
+  Message bubbles      initial: opacity 0, y 10 → opacity 1, y 0
+  Loading indicator    initial: opacity 0, y 10 → opacity 1, y 0
+  Spinner icon         animate: rotate 360° (repeat: Infinity)
+  Status dot           animate: pulse
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                      RESPONSIVE BREAKPOINTS                             ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+  Breakpoint    Changes
+  ────────────  ──────────────────────────────────────────────────────
+  < 640px       • Send button text hidden (icon only)
+  (mobile)      • Modal padding reduced
+                • Avatar size might adjust
+                • Max message width increased to 85%
+
+  640px - 768px • Send button shows "Send"
+  (sm)          • Standard modal width
+
+  > 768px       • Full layout
+  (md+)         • max-w-4xl modal
+                • All features visible
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                      ERROR HANDLING                                     ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+  Error Type                  Display
+  ──────────────────────────  ────────────────────────────────────────
+  Network error               "Network error: [message]"
+  API error (500, 404, etc.)  HTTP error message from backend
+  429 / Overloaded            "AI service temporarily unavailable..."
+  Timeout (>60s)              "Request timeout" (handled by API)
+  Empty response              "No response received"
+  
+  All errors shown as:
+    • Red message bubble in chat (bg-red-500/20, border-red-500/40)
+    • error property in Message interface
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                      ACCESSIBILITY (a11y)                               ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+  ✓ ARIA labels on all interactive elements
+  ✓ Semantic HTML (button, textarea, etc.)
+  ✓ Keyboard navigation (Tab, Enter, Shift+Enter)
+  ✓ Focus management (auto-focus on textarea)
+  ✓ Contrast ratios meet WCAG standards
+  ✓ Screen reader friendly (role descriptions)
+  ✓ Disabled states clear (grayed out, cursor-not-allowed)
+
+╔═════════════════════════════════════════════════════════════════════════╗
+║                      FUTURE ENHANCEMENTS                                ║
+╚═════════════════════════════════════════════════════════════════════════╝
+
+  Priority   Feature
+  ────────   ──────────────────────────────────────────────────────────
+  HIGH       • Persist chat history in localStorage
+             • Markdown rendering in messages (code blocks, bold, etc.)
+             • Copy message button
+
+  MEDIUM     • Typing indicator ("Luna is typing...")
+             • Custom avatars per agent (from Agent.avatar field)
+             • Export chat to .txt or .json
+
+  LOW        • Voice input (speech-to-text)
+             • Drag & drop file upload
+             • Emoji picker
+             • Theme customization (light mode)
+             • Message reactions (👍, ❤️, etc.)
+             • Search in chat history
+             • Pin important messages
+
+  TECHNICAL  • WebSocket for real-time streaming responses
+             • Infinite scroll for long chat histories
+             • Message edit/delete functionality
+             • Multi-agent group chat
