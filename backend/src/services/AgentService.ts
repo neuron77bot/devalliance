@@ -421,11 +421,12 @@ export class AgentService {
       // For now, we'll use the existing gateway token
       const token = agent.gateway.token;
 
-      // Construct WebSocket URL (accessible from browser via localhost)
-      const wsUrl = `ws://127.0.0.1:${port}`;
+      // Construct public WebSocket URL (via nginx proxy)
+      const wsUrl = `wss://devalliance.com.ar/app/ws/${id}`;
 
-      // Command for fallback (copy-paste)
-      const command = `openclaw tui --url ${wsUrl} --token ${token}`;
+      // Command for fallback (copy-paste with local URL)
+      const localWsUrl = `ws://127.0.0.1:${port}`;
+      const command = `openclaw tui --url ${localWsUrl} --token ${token}`;
 
       return {
         ok: true,
