@@ -1,17 +1,21 @@
 import { useState, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { Plus, Search, Filter, RefreshCw } from 'lucide-react';
+import { Plus, Search, Filter, RefreshCw, LayoutGrid, List } from 'lucide-react';
 import { useTasks, useTaskActions } from '../hooks/useTasks';
 import { TaskColumn } from '../components/TaskBoard/TaskColumn';
 import { TaskCard } from '../components/TaskBoard/TaskCard';
+import { TaskTableView } from '../components/TaskBoard/TaskTableView';
 import { TaskDetailModal } from '../components/TaskBoard/TaskDetailModal';
 import { TaskCreationForm } from '../components/TaskBoard/TaskCreationForm';
 import type { Task, TaskStatus, TaskPriority } from '../types/task';
 
 const COLUMN_ORDER: TaskStatus[] = ['pending', 'assigned', 'in_progress', 'paused', 'completed', 'failed', 'cancelled'];
 
+type ViewMode = 'kanban' | 'table';
+
 export function TaskBoard() {
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [filters, setFilters] = useState({
     search: '',
     priority: '' as TaskPriority | '',
@@ -116,19 +120,47 @@ export function TaskBoard() {
         </div>
         
         <div className="flex gap-3">
+          {/* View Mode Toggle */}
+          <div className="bg-navy-800 border border-navy-700 rounded-lg p-1 flex gap-1">
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-2 rounded-md transition-all flex items-center gap-2 ${
+                viewMode === 'kanban'
+                  ? 'bg-cyan-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-navy-700'
+              }`}
+              title="Kanban View"
+            >
+              <LayoutGrid size={16} />
+              <span className="hidden sm:inline">Kanban</span>
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 rounded-md transition-all flex items-center gap-2 ${
+                viewMode === 'table'
+                  ? 'bg-cyan-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-navy-700'
+              }`}
+              title="Table View"
+            >
+              <List size={16} />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+          </div>
+
           <button
             onClick={refresh}
             className="bg-navy-800 hover:bg-navy-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
           >
             <RefreshCw size={16} />
-            Refresh
+            <span className="hidden md:inline">Refresh</span>
           </button>
           <button
             onClick={() => setShowCreateForm(true)}
             className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
           >
             <Plus size={16} />
-            Create Task
+            <span className="hidden md:inline">Create Task</span>
           </button>
         </div>
       </div>
@@ -201,33 +233,40 @@ export function TaskBoard() {
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
-          {COLUMN_ORDER.map(status => (
-            <div key={status} className="min-h-[600px]">
-              <TaskColumn
-                status={status}
-                tasks={tasksByStatus[status]}
-                onTaskClick={setSelectedTask}
-              />
-            </div>
-          ))}
-        </div>
+      {/* View Content */}
+      {viewMode === 'kanban' ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+            {COLUMN_ORDER.map(status => (
+              <div key={status} className="min-h-[600px]">
+                <TaskColumn
+                  status={status}
+                  tasks={tasksByStatus[status]}
+                  onTaskClick={setSelectedTask}
+                />
+              </div>
+            ))}
+          </div>
 
-        <DragOverlay>
-          {activeTask && (
-            <div className="rotate-3">
-              <TaskCard task={activeTask} onClick={() => {}} isDragging />
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+          <DragOverlay>
+            {activeTask && (
+              <div className="rotate-3">
+                <TaskCard task={activeTask} onClick={() => {}} isDragging />
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
+      ) : (
+        <TaskTableView
+          tasks={filteredTasks}
+          onTaskClick={setSelectedTask}
+        />
+      )}
 
       {/* Modals */}
       <AnimatePresence>
