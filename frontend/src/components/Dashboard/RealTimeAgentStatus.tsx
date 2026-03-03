@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useWebSocket, WebSocketMessage } from '../../hooks/useWebSocket';
-import { AgentStatus } from '../../types/agent-output';
-import { fetchAPI } from '../../hooks/useApi';
+import { useState, useEffect, useCallback } from 'react';
+import { useWebSocket, type WebSocketMessage } from '../../hooks/useWebSocket';
+import type { AgentStatus } from '../../types/agent-output';
+import { fetchAPI } from '../../lib/api-client';
 
 interface RealTimeAgentStatusProps {
   agentId: string;
@@ -17,8 +17,8 @@ export function RealTimeAgentStatus({ agentId, showMetrics = false }: RealTimeAg
     const loadStatus = async () => {
       try {
         setLoading(true);
-        const response = await fetchAPI(`/agents/${agentId}/gateway-status`);
-        setStatus(response.status);
+        const agent = await fetchAPI<any>(`/agents/${agentId}`);
+        setStatus(agent.gatewayStatus || null);
       } catch (err) {
         console.error('Failed to load agent status:', err);
       } finally {

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useWebSocket, WebSocketMessage } from './useWebSocket';
-import { AgentOutput } from '../types/agent-output';
-import { fetchAPI } from './useApi';
+import { useWebSocket, type WebSocketMessage } from './useWebSocket';
+import type { AgentOutput } from '../types/agent-output';
 
 /**
  * Hook para suscribirse a outputs de un agente en tiempo real
@@ -16,19 +15,14 @@ export function useAgentOutput(agentId: string, taskId?: string) {
     const loadInitialOutputs = async () => {
       try {
         setLoading(true);
-        const endpoint = taskId 
-          ? `/tasks/${taskId}/output?limit=100`
-          : `/agents/${agentId}/output?limit=100`;
+        // TODO: Implementar endpoint de outputs cuando esté disponible
+        // const endpoint = taskId 
+        //   ? `/tasks/${taskId}/output?limit=100`
+        //   : `/agents/${agentId}/output?limit=100`;
+        // const response = await fetch(endpoint);
+        // const data = await response.json();
         
-        const response = await fetchAPI(endpoint);
-        const data = response.output || [];
-        
-        // Ordenar por timestamp ascendente (más antiguos primero)
-        const sorted = data.sort((a: AgentOutput, b: AgentOutput) => 
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
-        
-        setOutputs(sorted);
+        setOutputs([]);
         setError(null);
       } catch (err) {
         console.error('Failed to load agent outputs:', err);

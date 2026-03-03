@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Modal } from '../UI/Modal';
 import { AgentOutputConsole } from '../AgentOutput/AgentOutputConsole';
 import { useTaskExecution } from '../../hooks/useTaskExecution';
-import { Task } from '../../types/task';
+import type { Task } from '../../types/task';
 
 interface TaskExecutionModalProps {
   task: Task;
@@ -72,7 +72,7 @@ export function TaskExecutionModal({ task, isOpen, onClose }: TaskExecutionModal
             <div className="flex items-center gap-2">
               <span className="text-gray-400">Priority:</span>
               <span className={`px-2 py-1 rounded text-white text-xs font-medium ${
-                task.priority === 'critical' ? 'bg-red-500' :
+                task.priority === 'urgent' ? 'bg-red-500' :
                 task.priority === 'high' ? 'bg-orange-500' :
                 task.priority === 'medium' ? 'bg-yellow-500' :
                 'bg-green-500'

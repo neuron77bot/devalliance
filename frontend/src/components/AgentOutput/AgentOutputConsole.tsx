@@ -1,20 +1,18 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { AgentOutput, OutputType } from '../../types/agent-output';
+import { useRef, useEffect, useState } from 'react';
+import type { AgentOutput, OutputType } from '../../types/agent-output';
 
 interface AgentOutputConsoleProps {
   outputs: AgentOutput[];
   autoScroll?: boolean;
   maxHeight?: string;
   showTimestamps?: boolean;
-  filterTypes?: OutputType[];
 }
 
 export function AgentOutputConsole({
   outputs,
   autoScroll = true,
   maxHeight = '400px',
-  showTimestamps = true,
-  filterTypes
+  showTimestamps = true
 }: AgentOutputConsoleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<OutputType | 'all'>('all');
