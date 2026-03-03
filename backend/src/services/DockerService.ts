@@ -117,7 +117,10 @@ ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
         bind: 'lan',
         port: config.port,
         mode: 'local'
-      }
+      },
+      skillsPaths: [
+        '/home/node/.openclaw/workspace/skills'
+      ]
     };
 
     await fs.writeFile(
@@ -167,6 +170,7 @@ ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
         `--name ${containerName}`,
         '--network host',
         `-v ${openclawDir}:/home/node/.openclaw`,
+        '-v /var/www/devalliance/openclaw-containers/skills:/home/node/.openclaw/workspace/skills:ro',
         `--env-file ${instancePath}/.env`,
         '--restart unless-stopped',
         this.OPENCLAW_IMAGE
