@@ -1,42 +1,57 @@
-# DevAlliance Notify Skill
+# DevAlliance Task Notification
 
-Notifica cambios de estado de tareas a través de Telegram.
+This skill allows you to notify the DevAlliance backend about task execution status.
 
-## Uso
+## When to use
 
-Cuando completes una tarea o necesites notificar un evento importante:
+Use this skill when executing tasks assigned by DevAlliance Mission Control:
+
+- **At START**: Notify when you begin processing a task
+- **On SUCCESS**: Notify when the task completes successfully
+- **On ERROR**: Notify if the task fails
+
+## Tool
+
+### notify-task.sh
+
+Sends HTTP POST to the backend with task status.
+
+**Syntax:**
 
 ```bash
-./skills/devalliance-notify/notify-task.sh <task_id> <status> "<message>"
+./notify-task.sh <taskId> <status> [result] [error]
 ```
 
-## Parámetros
+**Parameters:**
 
-- `task_id`: ID de la tarea (MongoDB ObjectId)
-- `status`: Estado de la tarea (completed, failed, in_progress, etc.)
-- `message`: Mensaje descriptivo del resultado
+• `taskId` (required): Task identifier from the task prompt
+• `status` (required): One of: `started`, `completed`, `failed`
+• `result` (optional): Success message or description of what was done
+• `error` (optional): Error message (only for failed status)
 
-## Ejemplos
+**Examples:**
 
-```bash
-# Tarea completada exitosamente
-./skills/devalliance-notify/notify-task.sh 507f1f77bcf86cd799439011 completed "Backend deployado exitosamente"
+When you receive a task from DevAlliance:
 
-# Tarea fallida
-./skills/devalliance-notify/notify-task.sh 507f1f77bcf86cd799439011 failed "Error al conectar con MongoDB"
+1. Parse the Task ID from the prompt (line: "Task ID: ...")
+2. Notify START:
+   ```bash
+   ./skills/devalliance-notify/notify-task.sh <taskId> started
+   ```
+3. Execute the task using appropriate tools
+4. Notify result:
+   • Success:
+   ```bash
+   ./skills/devalliance-notify/notify-task.sh <taskId> completed "<description>"
+   ```
+   • Failure:
+   ```bash
+   ./skills/devalliance-notify/notify-task.sh <taskId> failed "" "<error>"
+   ```
 
-# Progreso de tarea
-./skills/devalliance-notify/notify-task.sh 507f1f77bcf86cd799439011 in_progress "Tests pasando (80%)"
-```
+## Configuration
 
-## Output
+The script uses these environment variables:
 
-El script retorna:
-- **Exit code 0**: Notificación enviada exitosamente
-- **Exit code 1**: Error al enviar notificación
-
-## Notas
-
-- Las notificaciones se envían al grupo DevAlliance en Telegram
-- El mensaje se formatea automáticamente con emojis según el estado
-- El script incluye timestamp automático
+• `DEVALLIANCE_BACKEND_URL` (default: http://localhost:3101)
+• `OPENCLAW_AGENT_ID` (auto-set by OpenClaw)
