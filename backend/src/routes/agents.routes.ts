@@ -12,7 +12,8 @@ import {
   DeleteAgentResponseSchema,
   ContainerOperationResponseSchema,
   ChatRequestSchema,
-  ChatResponseSchema
+  ChatResponseSchema,
+  TUITokenResponseSchema
 } from '../schemas/agent.schema';
 import { ErrorResponseSchema } from '../schemas/common.schema';
 import { OpenClawGatewayService } from '../services/OpenClawGatewayService';
@@ -436,6 +437,52 @@ export default async function agentRoutes(
 
       } catch (error) {
         fastify.log.error(error, '[Chat] Error');
+        return reply.status(500).send({
+          ok: false,
+          error: (error as Error).message
+        });
+      }
+    }
+  );
+
+  // GET /api/agents/:id/tui-token - Generate TUI token for WebSocket access
+  fastify.get<{ Params: { id: string } }>(
+    '/agents/:id/tui-token',
+    {
+      schema: {
+        tags: ['Agents'],
+        description: 'Generate temporary token for TUI WebSocket access',
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Agent ID (e.g., "luna", "sol", "mati")' }
+          },
+          required: ['id']
+        },
+        response: {
+          200: TUITokenResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
+        }
+      }
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+
+        fastify.log.info(`[TUI] Token request for agent ${id}`);
+
+        const response = await agentService.generateTUIToken(id);
+
+        if (!response.ok) {
+          const statusCode = response.error?.includes('not found') ? 404 : 500;
+          return reply.status(statusCode).send(response);
+        }
+
+        return response;
+
+      } catch (error) {
+        fastify.log.error(error, '[TUI] Error');
         return reply.status(500).send({
           ok: false,
           error: (error as Error).message

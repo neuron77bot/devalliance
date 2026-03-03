@@ -1,5 +1,5 @@
 import { AgentModel, IAgent } from '../models/Agent.model';
-import { Agent, CreateAgent, UpdateAgent, validateTelegramConfig, ChatRequest, ChatResponse } from '../schemas/agent.schema';
+import { Agent, CreateAgent, UpdateAgent, validateTelegramConfig, ChatRequest, ChatResponse, TUITokenResponse } from '../schemas/agent.schema';
 import { GatewayService } from './GatewayService';
 import { DockerService } from './DockerService';
 import { OpenClawGatewayService } from './OpenClawGatewayService';
@@ -386,6 +386,60 @@ export class AgentService {
       return {
         ok: false,
         error: error.message || 'Unknown error occurred'
+      };
+    }
+  }
+
+  /**
+   * Generate TUI token for WebSocket access
+   */
+  async generateTUIToken(id: string): Promise<TUITokenResponse> {
+    try {
+      // Verify agent exists
+      const agent = await this.getAgentById(id);
+      if (!agent) {
+        return {
+          ok: false,
+          error: `Agent '${id}' not found`
+        };
+      }
+
+      // Extract port from gateway URL (ws://127.0.0.1:PORT)
+      const urlMatch = agent.gateway.url.match(/:(\d+)/);
+      if (!urlMatch) {
+        return {
+          ok: false,
+          error: 'Invalid gateway URL format'
+        };
+      }
+      const port = urlMatch[1];
+
+      // Generate temporary token (valid for 10 minutes)
+      // TODO: Implement proper token storage with expiration in Redis/database
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+      // For now, we'll use the existing gateway token
+      const token = agent.gateway.token;
+
+      // Construct WebSocket URL (accessible from browser via localhost)
+      const wsUrl = `ws://127.0.0.1:${port}`;
+
+      // Command for fallback (copy-paste)
+      const command = `openclaw tui --url ${wsUrl} --token ${token}`;
+
+      return {
+        ok: true,
+        token,
+        wsUrl,
+        command,
+        expiresAt
+      };
+
+    } catch (error: any) {
+      console.error(`[AgentService] TUI token generation error for agent ${id}:`, error);
+      return {
+        ok: false,
+        error: error.message || 'Failed to generate TUI token'
       };
     }
   }

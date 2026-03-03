@@ -120,6 +120,16 @@ export const ChatResponseSchema = Type.Object({
   error: Type.Optional(Type.String())
 });
 
+// Schema for TUI token response
+export const TUITokenResponseSchema = Type.Object({
+  ok: Type.Boolean(),
+  token: Type.Optional(Type.String()),
+  wsUrl: Type.Optional(Type.String()),
+  command: Type.Optional(Type.String()),
+  expiresAt: Type.Optional(Type.String()),
+  error: Type.Optional(Type.String())
+});
+
 export type Agent = Static<typeof AgentSchema>;
 export type Gateway = Static<typeof GatewaySchema>;
 export type RpcCallBody = Static<typeof RpcCallBodySchema>;
@@ -127,6 +137,7 @@ export type CreateAgent = Static<typeof CreateAgentSchema>;
 export type UpdateAgent = Static<typeof UpdateAgentSchema>;
 export type ChatRequest = Static<typeof ChatRequestSchema>;
 export type ChatResponse = Static<typeof ChatResponseSchema>;
+export type TUITokenResponse = Static<typeof TUITokenResponseSchema>;
 
 /**
  * Validate Telegram configuration

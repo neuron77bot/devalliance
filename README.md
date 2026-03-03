@@ -4,6 +4,32 @@ Sistema de orquestación multi-agente con dashboard en tiempo real para monitore
 
 ## 🚀 Features
 
+### 💬 Terminal UI (TUI) Integration (✅ Completado)
+
+- **Terminal Emulado en Navegador:**
+  - xterm.js con tema navy/cyan consistente
+  - WebSocket directo al gateway del agente
+  - Autenticación con tokens temporales (TTL 10 min)
+  - Botón 💬 integrado en AgentCard
+
+- **Chat en Tiempo Real:**
+  - Interacción bidireccional con agentes OpenClaw
+  - Thinking/reasoning visible en tiempo real
+  - Manejo de ANSI colors y escape sequences
+  - Input buffer con backspace support
+
+- **Fallback Mode:**
+  - Comando CLI para copiar si WebSocket falla
+  - Indicador de expiración de token
+  - Error handling robusto
+
+- **Seguridad:**
+  - Tokens con TTL de 10 minutos
+  - Autenticación via gateway token
+  - Endpoint dedicado: `GET /api/agents/:id/tui-token`
+
+📖 **Documentación completa:** [TUI_INTEGRATION.md](./TUI_INTEGRATION.md)
+
 ### Issue #7 - Enhanced Dashboard (✅ Completado)
 
 - **📊 KPIs en Tiempo Real:**
@@ -62,13 +88,18 @@ Sistema de orquestación multi-agente con dashboard en tiempo real para monitore
 └── frontend/             # React + TypeScript + Tailwind
     ├── src/
     │   ├── components/
+    │   │   ├── AgentManagement/
+    │   │   │   ├── TUIModal.tsx             # ✨ Nuevo (Terminal UI)
+    │   │   │   ├── ChatModal.tsx
+    │   │   │   ├── CreateEditModal.tsx
+    │   │   │   └── DeleteConfirmModal.tsx
     │   │   └── Dashboard/
     │   │       ├── KPICard.tsx              # ✨ Nuevo
     │   │       ├── MetricsChart.tsx         # ✨ Nuevo
     │   │       ├── ActivityTimeline.tsx     # ✨ Nuevo
     │   │       ├── AgentMetrics.tsx         # ✨ Nuevo
     │   │       ├── LiveIndicator.tsx        # ✨ Nuevo
-    │   │       ├── AgentCard.tsx            # 🔄 Actualizado
+    │   │       ├── AgentCard.tsx            # 🔄 Actualizado (+ TUI button)
     │   │       └── AgentGrid.tsx            # 🔄 Actualizado
     │   ├── hooks/
     │   │   ├── useMetrics.ts                # ✨ Nuevo
@@ -138,6 +169,27 @@ Métricas de un agente específico con historial completo.
 
 #### `GET /api/metrics/response-time`
 Historial de response time (últimos 60 minutos).
+
+### TUI Token (Nuevo)
+
+#### `GET /api/agents/:id/tui-token`
+Generar token temporal para acceso TUI WebSocket.
+
+**Response:**
+```json
+{
+  "ok": true,
+  "token": "f685fceb44476a97c3ca193b6986f01fdf05aed83b8eff0e",
+  "wsUrl": "ws://127.0.0.1:18796",
+  "command": "openclaw tui --url ws://127.0.0.1:18796 --token ...",
+  "expiresAt": "2026-03-03T14:49:56.016Z"
+}
+```
+
+**Security:**
+- Token válido por 10 minutos
+- Requiere agente en estado "healthy"
+- WebSocket directo al gateway del agente
 
 ### Activity Feed (Nuevo)
 
@@ -224,10 +276,18 @@ Endpoints:
 ### Frontend
 ```bash
 cd /var/www/devalliance/frontend
-npm install recharts  # Si no está instalado
+npm install  # Incluye xterm.js, recharts, etc.
 npm run build
 docker compose up -d --build
 ```
+
+**Dependencies:**
+- `@xterm/xterm` - Terminal emulator
+- `@xterm/addon-fit` - Auto-resize addon
+- `@xterm/addon-web-links` - Clickable links
+- `recharts` - Charts library
+- `framer-motion` - Animations
+- `lucide-react` - Icons
 
 URL: http://localhost:3000
 
@@ -256,6 +316,12 @@ curl http://localhost:3101/api/metrics/agents
 5. Verificar el indicador "Live Updates" (verde = conectado)
 6. Expandir métricas de un agente
 7. Verificar sparklines de CPU/Memory/Response Time
+8. **TUI Testing:**
+   - Click en botón 💬 en AgentCard (solo visible si agente healthy)
+   - Verificar que modal TUI abre con terminal
+   - Escribir mensaje y presionar Enter
+   - Verificar respuesta del agente en tiempo real
+   - Verificar que thinking/reasoning aparece si está habilitado
 
 ### WebSocket
 ```javascript

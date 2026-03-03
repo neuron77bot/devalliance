@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { MessageSquare } from 'lucide-react';
 import type { Agent } from '../../types/api';
 import { StatusBadge } from './StatusBadge';
 import { AgentMetrics } from './AgentMetrics';
 import { formatUptime, formatResponseTime } from '../../utils/helpers';
 import { useSingleAgentMetrics } from '../../hooks/useMetrics';
+import { TUIModal } from '../AgentManagement/TUIModal';
 
 interface AgentCardProps {
   agent: Agent;
@@ -15,23 +18,48 @@ export const AgentCard = ({ agent, onClick, showMetrics = false }: AgentCardProp
   const { metrics: agentMetrics, loading: metricsLoading } = useSingleAgentMetrics(
     showMetrics ? agent.id : null
   );
+  const [showTUI, setShowTUI] = useState(false);
+
+  const handleCardClick = () => {
+    if (onClick) onClick();
+  };
+
+  const handleTUIClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowTUI(true);
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.02, borderColor: 'rgba(99, 102, 241, 0.5)' }}
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      className="bg-navy-900 rounded-lg shadow-lg border border-navy-800 p-6 cursor-pointer transition-all duration-200"
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-xl font-bold text-gray-100 mb-1">{agent.name}</h3>
-          <p className="text-sm text-primary-400 font-medium">{agent.role}</p>
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ scale: 1.02, borderColor: 'rgba(99, 102, 241, 0.5)' }}
+        whileTap={{ scale: 0.98 }}
+        onClick={handleCardClick}
+        className="bg-navy-900 rounded-lg shadow-lg border border-navy-800 p-6 cursor-pointer transition-all duration-200"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-gray-100 mb-1">{agent.name}</h3>
+            <p className="text-sm text-primary-400 font-medium">{agent.role}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <StatusBadge status={agent.status} showText={false} />
+            {agent.status === 'healthy' && (
+              <motion.button
+                onClick={handleTUIClick}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors shadow-lg"
+                title="Open Chat Terminal"
+              >
+                <MessageSquare className="w-4 h-4" />
+              </motion.button>
+            )}
+          </div>
         </div>
-        <StatusBadge status={agent.status} showText={false} />
-      </div>
 
       {/* Description */}
       <p className="text-gray-400 text-sm mb-4 line-clamp-2">
@@ -84,6 +112,15 @@ export const AgentCard = ({ agent, onClick, showMetrics = false }: AgentCardProp
       {showMetrics && (
         <AgentMetrics metrics={agentMetrics} loading={metricsLoading} />
       )}
-    </motion.div>
+      </motion.div>
+
+      {/* TUI Modal */}
+      <TUIModal
+        isOpen={showTUI}
+        onClose={() => setShowTUI(false)}
+        agentId={agent.id}
+        agentName={agent.name}
+      />
+    </>
   );
 };
