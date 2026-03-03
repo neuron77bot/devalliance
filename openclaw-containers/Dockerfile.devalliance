@@ -1,0 +1,75 @@
+# DevAlliance Custom OpenClaw Image
+# Extends openclaw:local with whisper-cpp for audio transcription
+
+FROM openclaw:local
+
+# Metadata
+LABEL org.opencontainers.image.title="OpenClaw DevAlliance" \
+      org.opencontainers.image.description="OpenClaw with whisper-cpp audio transcription support" \
+      org.opencontainers.image.source="https://github.com/neuron77bot/devalliance"
+
+USER root
+
+# Install build dependencies for whisper-cpp
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      build-essential \
+      git \
+      cmake \
+      wget \
+      ca-certificates \
+      ffmpeg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Build whisper-cpp from source
+WORKDIR /tmp/whisper-build
+RUN git clone https://github.com/ggerganov/whisper.cpp.git . && \
+    git checkout v1.7.1 && \
+    make -j$(nproc) && \
+    cp main /usr/local/bin/whisper-cli && \
+    chmod +x /usr/local/bin/whisper-cli
+
+# Download whisper model (ggml-tiny.bin for Spanish)
+RUN mkdir -p /usr/local/share/whisper-models && \
+    wget -O /usr/local/share/whisper-models/ggml-tiny.bin \
+      https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin && \
+    chmod 644 /usr/local/share/whisper-models/ggml-tiny.bin
+
+# Create transcription script
+RUN cat > /usr/local/bin/transcribe-audio.sh << 'EOFSCRIPT'
+#!/bin/bash
+# Transcribe audio using ffmpeg + whisper-cli
+INPUT="$1"
+TEMP_WAV="/tmp/whisper-$$.wav"
+
+# Convert to WAV
+ffmpeg -i "$INPUT" -ar 16000 -ac 1 -c:a pcm_s16le "$TEMP_WAV" -y 2>/dev/null
+
+# Transcribe with whisper (extract only text)
+whisper-cli -m /usr/local/share/whisper-models/ggml-tiny.bin -l es -nt -np "$TEMP_WAV" 2>&1 | \
+  grep -v "^whisper_" | grep -v "^output_" | grep -v "^\[" | \
+  sed 's/^[[:space:]]*//' | grep -v '^$'
+
+# Cleanup
+rm -f "$TEMP_WAV"
+EOFSCRIPT
+
+RUN chmod +x /usr/local/bin/transcribe-audio.sh
+
+# Cleanup build artifacts
+RUN rm -rf /tmp/whisper-build
+
+# Create default whisper models directory for agents
+RUN mkdir -p /home/node/.openclaw/whisper-models && \
+    ln -sf /usr/local/share/whisper-models/ggml-tiny.bin \
+      /home/node/.openclaw/whisper-models/ggml-tiny.bin && \
+    chown -R node:node /home/node/.openclaw/whisper-models
+
+# Switch back to node user for security
+USER node
+
+WORKDIR /app
+
+# Healthcheck inherited from base image
+# CMD inherited from base image

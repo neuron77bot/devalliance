@@ -25,7 +25,7 @@ export interface ContainerStatus {
 }
 
 export class DockerService {
-  private readonly OPENCLAW_IMAGE = 'openclaw:local';
+  private readonly OPENCLAW_IMAGE = 'openclaw:devalliance';
   private readonly INSTANCES_BASE_PATH = '/var/www/devalliance/openclaw-containers/instances';
   private readonly NETWORK_NAME = 'devalliance_network';
 
