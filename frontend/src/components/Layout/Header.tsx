@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, ListTodo } from 'lucide-react';
+import { Users, ListTodo } from 'lucide-react';
 
 interface HeaderProps {
   systemStatus?: 'operational' | 'degraded' | 'down';
@@ -44,17 +44,6 @@ export const Header = ({ systemStatus = 'operational' }: HeaderProps) => {
 
           {/* Navigation */}
           <nav className="flex items-center gap-2">
-            <Link
-              to="/"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                isActive('/')
-                  ? 'bg-cyan-600 text-white'
-                  : 'text-gray-300 hover:bg-navy-800'
-              }`}
-            >
-              <Home size={18} />
-              <span className="text-sm font-medium">Dashboard</span>
-            </Link>
             <Link
               to="/agents"
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
