@@ -75,3 +75,32 @@ export async function fetchAPI<T>(
     throw new ApiError('Unknown error occurred', 0, 'Unknown Error');
   }
 }
+
+/**
+ * Chat API Types
+ */
+export interface ChatRequest {
+  message: string;
+  sessionKey?: string;
+  timeoutSeconds?: number;
+}
+
+export interface ChatResponse {
+  ok: boolean;
+  reply?: string;
+  sessionKey?: string;
+  error?: string;
+}
+
+/**
+ * Send a chat message to an agent
+ */
+export async function sendChatMessage(
+  agentId: string,
+  request: ChatRequest
+): Promise<ChatResponse> {
+  return fetchAPI<ChatResponse>(`/agents/${agentId}/chat`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}

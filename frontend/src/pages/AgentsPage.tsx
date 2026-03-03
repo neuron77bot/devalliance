@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit, Trash2, Play, Square, RotateCw, AlertCircle, LayoutGrid, List } from 'lucide-react';
+import { Plus, Edit, Trash2, Play, Square, RotateCw, AlertCircle, LayoutGrid, List, MessageCircle } from 'lucide-react';
 import { useAgents } from '../hooks/useAgents';
 import { useAgentActions, type CreateAgentData, type UpdateAgentData } from '../hooks/useAgentActions';
 import { CreateEditModal } from '../components/AgentManagement/CreateEditModal';
 import { DeleteConfirmModal } from '../components/AgentManagement/DeleteConfirmModal';
+import { ChatModal } from '../components/AgentManagement/ChatModal';
 import type { Agent } from '../types/api';
 
 type ViewMode = 'grid' | 'list';
@@ -24,7 +25,9 @@ export const AgentsPage = () => {
   const [filter, setFilter] = useState<'all' | 'healthy' | 'warning' | 'offline'>('all');
   const [showCreateEditModal, setShowCreateEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [chatAgent, setChatAgent] = useState<Agent | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -140,6 +143,12 @@ export const AgentsPage = () => {
     setSelectedAgent(null);
     setModalMode('create');
     setShowCreateEditModal(true);
+  };
+
+  // Open chat modal
+  const handleOpenChat = (agent: Agent) => {
+    setChatAgent(agent);
+    setShowChatModal(true);
   };
 
   // Get status badge color
@@ -343,6 +352,15 @@ export const AgentsPage = () => {
 
                 <div className="flex-1"></div>
 
+                {/* Chat button */}
+                <button
+                  onClick={() => handleOpenChat(agent)}
+                  className="p-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 rounded transition-colors"
+                  title="Chat"
+                >
+                  <MessageCircle size={18} />
+                </button>
+
                 {/* Edit and Delete buttons */}
                 <button
                   onClick={() => openEditModal(agent)}
@@ -421,6 +439,13 @@ export const AgentsPage = () => {
                           <RotateCw size={16} />
                         </button>
                         <button
+                          onClick={() => handleOpenChat(agent)}
+                          className="p-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 rounded transition-colors"
+                          title="Chat"
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+                        <button
                           onClick={() => openEditModal(agent)}
                           className="p-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded transition-colors"
                           title="Edit"
@@ -472,6 +497,17 @@ export const AgentsPage = () => {
         onConfirm={handleDeleteAgent}
         agent={selectedAgent}
       />
+
+      {/* Chat Modal */}
+      {showChatModal && chatAgent && (
+        <ChatModal
+          agent={chatAgent}
+          onClose={() => {
+            setShowChatModal(false);
+            setChatAgent(null);
+          }}
+        />
+      )}
     </div>
   );
 };
