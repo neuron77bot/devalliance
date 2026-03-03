@@ -21,7 +21,9 @@ export const CreateAgentSchema = Type.Object({
   role: Type.String({ minLength: 1 }),
   description: Type.String({ minLength: 1 }),
   capabilities: Type.Optional(Type.Array(Type.String())),
-  port: Type.Optional(Type.Number({ minimum: 1024, maximum: 65535 }))
+  port: Type.Optional(Type.Number({ minimum: 1024, maximum: 65535 })),
+  enableTelegram: Type.Optional(Type.Boolean()),
+  telegramToken: Type.Optional(Type.String({ minLength: 40 }))
 });
 
 // Schema for updating an existing agent
@@ -29,7 +31,9 @@ export const UpdateAgentSchema = Type.Object({
   name: Type.Optional(Type.String({ minLength: 1 })),
   role: Type.Optional(Type.String({ minLength: 1 })),
   description: Type.Optional(Type.String({ minLength: 1 })),
-  capabilities: Type.Optional(Type.Array(Type.String()))
+  capabilities: Type.Optional(Type.Array(Type.String())),
+  enableTelegram: Type.Optional(Type.Boolean()),
+  telegramToken: Type.Optional(Type.String({ minLength: 40 }))
 });
 
 export const AgentListResponseSchema = Type.Object({
@@ -99,3 +103,12 @@ export type Gateway = Static<typeof GatewaySchema>;
 export type RpcCallBody = Static<typeof RpcCallBodySchema>;
 export type CreateAgent = Static<typeof CreateAgentSchema>;
 export type UpdateAgent = Static<typeof UpdateAgentSchema>;
+
+/**
+ * Validate Telegram configuration
+ */
+export function validateTelegramConfig(data: CreateAgent | UpdateAgent): void {
+  if (data.enableTelegram && !data.telegramToken) {
+    throw new Error('telegramToken is required when enableTelegram is true');
+  }
+}

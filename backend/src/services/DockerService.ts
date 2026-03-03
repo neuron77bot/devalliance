@@ -11,6 +11,11 @@ export interface DockerContainerConfig {
   name: string;
   port: number;
   gatewayToken: string;
+  telegram?: {
+    enabled: boolean;
+    token: string;
+    botUsername?: string;
+  };
 }
 
 export interface ContainerStatus {
@@ -100,11 +105,16 @@ export class DockerService {
     );
 
     // Create .env file for container
-    const envContent = `OPENCLAW_GATEWAY_TOKEN=${config.gatewayToken}
+    let envContent = `OPENCLAW_GATEWAY_TOKEN=${config.gatewayToken}
 OPENCLAW_AGENT_ID=${config.id}
 OPENCLAW_GATEWAY_PORT=${config.port}
 ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
 `;
+
+    // Add Telegram token if enabled
+    if (config.telegram?.enabled && config.telegram?.token) {
+      envContent += `TELEGRAM_TOKEN=${config.telegram.token}\n`;
+    }
 
     await fs.writeFile(
       path.join(instancePath, '.env'),
@@ -112,7 +122,7 @@ ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
     );
 
     // Create openclaw.json config file
-    const openclawConfig = {
+    const openclawConfig: any = {
       gateway: {
         bind: 'lan',
         port: config.port,
@@ -122,6 +132,16 @@ ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY || ''}
         '/home/node/.openclaw/workspace/skills'
       ]
     };
+
+    // Add Telegram channel config if enabled
+    if (config.telegram?.enabled) {
+      openclawConfig.channels = {
+        telegram: {
+          enabled: true,
+          mode: 'local'
+        }
+      };
+    }
 
     await fs.writeFile(
       path.join(openclawDir, 'config', 'openclaw.json'),

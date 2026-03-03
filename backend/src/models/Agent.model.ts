@@ -11,6 +11,10 @@ export interface IAgent extends Document {
     healthUrl: string;
   };
   capabilities: string[];
+  telegram?: {
+    enabled: boolean;
+    botUsername?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,7 +30,14 @@ const AgentSchema = new Schema<IAgent>(
       token: { type: String, required: true },
       healthUrl: { type: String, required: true }
     },
-    capabilities: [{ type: String }]
+    capabilities: [{ type: String }],
+    telegram: {
+      type: {
+        enabled: { type: Boolean, default: false },
+        botUsername: { type: String, required: false }
+      },
+      required: false
+    }
   },
   {
     timestamps: true,

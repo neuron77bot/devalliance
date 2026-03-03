@@ -20,6 +20,10 @@ export interface Agent {
   capabilities: string[];
   gateway: Gateway;
   metrics: AgentMetrics;
+  telegram?: {
+    enabled: boolean;
+    botUsername?: string;
+  };
 }
 
 export interface Task {

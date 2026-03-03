@@ -8,6 +8,8 @@ export interface CreateAgentData {
   description: string;
   capabilities?: string[];
   port?: number;
+  enableTelegram?: boolean;
+  telegramToken?: string;
 }
 
 export interface UpdateAgentData {
@@ -15,6 +17,8 @@ export interface UpdateAgentData {
   role?: string;
   description?: string;
   capabilities?: string[];
+  enableTelegram?: boolean;
+  telegramToken?: string;
 }
 
 export const useAgentActions = () => {

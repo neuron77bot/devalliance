@@ -1,5 +1,5 @@
 import { AgentModel, IAgent } from '../models/Agent.model';
-import { Agent, CreateAgent, UpdateAgent } from '../schemas/agent.schema';
+import { Agent, CreateAgent, UpdateAgent, validateTelegramConfig } from '../schemas/agent.schema';
 import { GatewayService } from './GatewayService';
 import { DockerService } from './DockerService';
 
@@ -83,6 +83,11 @@ export class AgentService {
    * Create a new agent with Docker container
    */
   async createAgent(data: CreateAgent): Promise<Agent> {
+    // Validate Telegram config if enabled
+    if (data.enableTelegram) {
+      validateTelegramConfig(data);
+    }
+
     // Generate unique ID from name (lowercase, replace spaces with hyphens)
     const id = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
@@ -98,10 +103,25 @@ export class AgentService {
     // Generate gateway token
     const gatewayToken = this.dockerService.generateGatewayToken();
 
+    // Verify Telegram token and get bot info if Telegram is enabled
+    let telegramConfig: any = undefined;
+    if (data.enableTelegram && data.telegramToken) {
+      try {
+        const botInfo = await this.verifyTelegramToken(data.telegramToken);
+        telegramConfig = {
+          enabled: true,
+          token: data.telegramToken,
+          botUsername: botInfo?.username
+        };
+      } catch (error: any) {
+        throw new Error(`Telegram verification failed: ${error.message}`);
+      }
+    }
+
     // Create agent object
     // Note: Both backend and agent containers use network host mode
     // Backend connects to gateway via localhost
-    const agent: Agent = {
+    const agent: any = {
       id,
       name: data.name,
       role: data.role,
@@ -114,6 +134,14 @@ export class AgentService {
       }
     };
 
+    // Add Telegram info to agent (without the token)
+    if (telegramConfig) {
+      agent.telegram = {
+        enabled: true,
+        botUsername: telegramConfig.botUsername
+      };
+    }
+
     // Save to database
     await this.upsertAgent(agent);
 
@@ -124,7 +152,8 @@ export class AgentService {
         id,
         name: data.name,
         port,
-        gatewayToken
+        gatewayToken,
+        telegram: telegramConfig  // Pass full telegram config including token
       });
     } catch (error) {
       // Rollback: delete from database if container creation fails
@@ -295,5 +324,25 @@ export class AgentService {
     };
 
     return await this.gatewayService.callGateway(agentObj, method, params);
+  }
+
+  /**
+   * Verify Telegram bot token with Telegram API
+   */
+  private async verifyTelegramToken(token: string): Promise<{ username?: string } | null> {
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const data: any = await response.json();
+
+      if (!data.ok) {
+        throw new Error(data.description || 'Invalid Telegram token');
+      }
+
+      return {
+        username: data.result?.username
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to verify Telegram token: ${error.message}`);
+    }
   }
 }
